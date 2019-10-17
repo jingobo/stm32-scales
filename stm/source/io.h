@@ -99,9 +99,24 @@
 #define IO_LED                          5
 #define IO_LED_PORT                     GPIOA
 
-#define IO_MCO                          8
-#define IO_MCO_PORT                     GPIOA
+#define IO_BTN_KEY1                     6
+#define IO_BTN_KEY1_PORT                GPIOA
 
+#define IO_BTN_KEY2                     7
+#define IO_BTN_KEY2_PORT                GPIOA
+
+#define IO_BTN_KEY3                     8
+#define IO_BTN_KEY3_PORT                GPIOA
+
+#define IO_BTN_KEY4                     9
+#define IO_BTN_KEY4_PORT                GPIOA
+
+#define IO_GND1                         11
+#define IO_GND1_PORT                    GPIOA
+
+#define IO_GND2                         12
+#define IO_GND2_PORT                    GPIOA
+        
 #define IO_SWDIO                        13
 #define IO_SWDIO_PORT                   GPIOA
 
@@ -116,11 +131,11 @@
 #define IO_SWO                          3
 #define IO_SWO_PORT                     GPIOB
 
-#define IO_HX_CLK                       4
-#define IO_HX_CLK_PORT                  GPIOB
-
-#define IO_HX_RX                        5
+#define IO_HX_RX                        4
 #define IO_HX_RX_PORT                   GPIOB
+
+#define IO_HX_CLK                       5
+#define IO_HX_CLK_PORT                  GPIOB
 
 #define IO_MT_CH0                       6
 #define IO_MT_CH0_PORT                  GPIOB
@@ -167,6 +182,11 @@
 #define IO_OSC_OUT                      1
 #define IO_OSC_OUT_PORT                 GPIOH
 
+// --- Псевдонимы --- //
+        
+#define IO_MCO                          IO_BTN_KEY3
+#define IO_MCO_PORT                     IO_BTN_KEY3_PORT
+        
 // Инициализация модуля
 void io_init(void);
 
