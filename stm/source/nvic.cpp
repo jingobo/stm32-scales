@@ -104,7 +104,9 @@ static void nvic_interrupt_bus(void)
 extern "C" void __iar_program_start(void);
 
 // Модули в которых есть прерывания
+#include "key.h"
 #include "mcu.h"
+#include "timer.h"
 
 // Обявление сегмента для sfe
 SECTION_DECLARE(NVIC_SECTION_STACK)
@@ -156,13 +158,13 @@ extern "C" __root const nvic_vtbl_t __vector_table @ NVIC_SECTION_VTBL =
         nvic_interrupt_dummy,                   // CAN1 RX0
         nvic_interrupt_dummy,                   // CAN1 RX1
         nvic_interrupt_dummy,                   // CAN1 SCE
-        nvic_interrupt_dummy,                   // EXTI [9:5]
+        key_interrupt_exti,                     // EXTI [9:5]
         nvic_interrupt_dummy,                   // TIM1 Break / TIM15
         nvic_interrupt_dummy,                   // TIM1 Update  / TIM16
         nvic_interrupt_dummy,                   // TIM1 Trigger / TIM17
         nvic_interrupt_dummy,                   // TIM1 CC
         nvic_interrupt_dummy,                   // TIM2
-        nvic_interrupt_dummy,                   // TIM3
+        timer_base_t::interrupt_htim,           // TIM3
         nvic_interrupt_dummy,                   // TIM4
         nvic_interrupt_dummy,                   // I2C1 Event
         nvic_interrupt_dummy,                   // I2C1 Error

@@ -69,6 +69,7 @@ static bool mcu_init_rcc(void)
 
 void mcu_init(void)
 {
+    RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN;                                       // SYSCFG clock gate
     // Явно включать прерывание SysTick нельзя, оно немаскируемое
     mcu_systick_update();
     nvic_irq_priority_set(SysTick_IRQn, NVIC_IRQ_PRIORITY_LOWEST);              // Lowest SysTick IRQ priority
@@ -116,7 +117,7 @@ void mcu_mco_output(mcu_mco_source_t source)
     switch (source)
     {
         case MCU_MCO_SOURCE_NONE:
-            IO_MODE_SET(IO_MCO, IO_MODE_OUTPUT);
+            IO_MODE_SET(IO_MCO, IO_MODE_INPUT);
             break;
         case MCU_MCO_SOURCE_SYS:
         case MCU_MCO_SOURCE_HSI:

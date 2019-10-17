@@ -1160,34 +1160,58 @@
     <group>
         <name>include</name>
         <file>
+            <name>$PROJ_DIR$\source\callback.h</name>
+        </file>
+        <file>
             <name>$PROJ_DIR$\source\system.h</name>
         </file>
         <file>
             <name>$PROJ_DIR$\source\typedefs.h</name>
         </file>
     </group>
-    <file>
-        <name>$PROJ_DIR$\source\adc.cpp</name>
-    </file>
-    <file>
-        <name>$PROJ_DIR$\source\gfx.cpp</name>
-    </file>
-    <file>
-        <name>$PROJ_DIR$\source\io.cpp</name>
-    </file>
-    <file>
-        <name>$PROJ_DIR$\source\lcd.cpp</name>
-    </file>
+    <group>
+        <name>logic</name>
+        <file>
+            <name>$PROJ_DIR$\source\event.cpp</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\source\gfx.cpp</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\source\gui.cpp</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\source\lcd.cpp</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\source\list.cpp</name>
+        </file>
+    </group>
+    <group>
+        <name>peripheral</name>
+        <file>
+            <name>$PROJ_DIR$\source\adc.cpp</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\source\io.cpp</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\source\key.cpp</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\source\mcu.cpp</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\source\nvic.cpp</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\source\spi.cpp</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\source\timer.cpp</name>
+        </file>
+    </group>
     <file>
         <name>$PROJ_DIR$\source\main.cpp</name>
-    </file>
-    <file>
-        <name>$PROJ_DIR$\source\mcu.cpp</name>
-    </file>
-    <file>
-        <name>$PROJ_DIR$\source\nvic.cpp</name>
-    </file>
-    <file>
-        <name>$PROJ_DIR$\source\spi.cpp</name>
     </file>
 </project>

@@ -3,7 +3,11 @@
 #include "gfx.h" // TODO: ???
 #include "lcd.h"
 #include "adc.h"
+#include "key.h"
+#include "gui.h"
 #include "nvic.h"
+#include "event.h"
+#include "timer.h"
 
 static const uint8_t ARIAL[] =
 {
@@ -234,6 +238,28 @@ static const uint8_t ARIAL[] =
     0, 0, 0, 0
 };
 
+int32_t last = 0;
+
+static timer_callback_t adc_timer([](void)
+{
+    char text[32];
+    auto adc = adc_read();
+    
+    adc /= 100;
+    
+    if (adc > 0)
+        sprintf(text, "+%d", adc);
+    else
+        sprintf(text, "%d", adc);
+    
+    if (last != adc)
+    {
+        gfx_rect_solid(LCD_COLOR_BLACK, 10, 10, 140, 38);
+        gfx_font_string(text, 10, 10, ARIAL);
+        last = adc;
+    }
+});
+
 // Точка входа в приложение
 __task __noreturn void main(void)
 {
@@ -241,12 +267,15 @@ __task __noreturn void main(void)
     nvic_init();
     mcu_init();
     io_init();
+    timer_init();
     // Остальные модули
+    key_init();
     adc_init();
     lcd_init();
+    gui_init();
     
     // Тест
-        
+    
     gfx_rect_solid(LCD_COLOR_BLACK, 0, 0, LCD_SIZE_WIDTH, LCD_SIZE_HEIGHT);
 
     gfx_rect_solid(LCD_COLOR_RED, 10, 60, 20, 20);
@@ -255,26 +284,8 @@ __task __noreturn void main(void)
 
     gfx_rect_solid(LCD_COLOR_BLUE, 70, 60, 20, 20);
     
-    int32_t last = 0;
+    adc_timer.start_us(100, TIMER_FLAG_LOOP);
     
-    // Главный цикл
-    for (;;)
-    {
-        char text[32];
-        auto adc = adc_read();
-        
-        adc /= 100;
-        
-        if (adc > 0)
-            sprintf(text, "+%d", adc);
-        else
-            sprintf(text, "%d", adc);
-        
-        if (last != adc)
-        {
-            gfx_rect_solid(LCD_COLOR_BLACK, 10, 10, 140, 38);
-            gfx_font_string(text, 10, 10, ARIAL);
-            last = adc;
-        }
-    }
+    // Главный цикл событий
+    event_t::loop();
 }

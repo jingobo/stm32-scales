@@ -6,7 +6,9 @@
 
 /* Используемая переферия:
    mcu - RCC, SYSTICK
-   spi - SPI3
+   spi - DMA2 (channel 2), SPI3
+   timer - TIM3,
+   key - ETTI[5..9]
 */
 
 // Частота ядра при старте
