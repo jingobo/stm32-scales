@@ -152,11 +152,9 @@ void timer_base_t::interrupt_htim(void)
                 else
                 {
                     // ...в основной нити
+                    event_raise = true;
                     if (timer.raised.unlinked())
-                    {
-                        event_raise = true;
                         timer.raised.link(timer_list.raised);
-                    }
                 }
                 if (timer.reload <= 0)
                 {

@@ -18,7 +18,6 @@ void event_t::raise(void)
 {
     // Добавление в начало списка событий
     IRQ_SAFE_ENTER();
-        
         // Если уже установлен - выходим
         if (pending)
         {
