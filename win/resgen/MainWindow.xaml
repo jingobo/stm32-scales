@@ -8,17 +8,18 @@
         mc:Ignorable="d"
         Title="Кодогенератор ресурсов" Height="600" Width="800">
     <Grid>
+        <!-- Стили стандартных элементов -->
         <Grid.Resources>
             <Style TargetType="Button">
-                <Setter Property="Padding" Value="5 2" />
-                <Setter Property="HorizontalAlignment" Value="Center" />
                 <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="HorizontalAlignment" Value="Center" />
             </Style>
             <Style TargetType="GroupBox">
-                <Setter Property="Padding" Value="5 5 5 0" />
                 <Setter Property="Margin" Value="5 5 5 0" />
+                <Setter Property="Padding" Value="5 5 5 0" />
             </Style>
             <Style TargetType="TextBlock">
+                <Setter Property="FontWeight" Value="Bold" />
                 <Setter Property="VerticalAlignment" Value="Center" />
             </Style>
         </Grid.Resources>
@@ -29,19 +30,13 @@
         <!-- Настройки -->
         <StackPanel Grid.Row="0">
             <StackPanel.Resources>
-                <Thickness x:Key="DefaultMargin">10 5</Thickness>
+                <Thickness x:Key="FieldMargin">10 5 0 5</Thickness>
                 <Style TargetType="TextBox">
                     <Setter Property="VerticalAlignment" Value="Center" />
-                    <Setter Property="Margin" Value="{StaticResource DefaultMargin}" />
-                </Style>
-                <Style TargetType="Border">
-                    <Setter Property="Width" Value="20" />
-                    <Setter Property="BorderBrush" Value="Black" />
-                    <Setter Property="BorderThickness" Value="1" />
-                    <Setter Property="Margin" Value="5 5" />
-                    <Setter Property="Cursor" Value="Hand" />
+                    <Setter Property="Margin" Value="{StaticResource FieldMargin}" />
                 </Style>
             </StackPanel.Resources>
+            <!-- Из шрифта -->
             <GroupBox>
                 <GroupBox.Header>
                     <RadioButton Name="useFontRadioButton" IsChecked="True" Content="Из шрифта" GroupName="mode" />
@@ -54,27 +49,26 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <TextBlock 
-                        Grid.Column="0"  Grid.Row="0" 
-                        FontWeight="Bold" Text="Шрифт:" />
-                    <TextBlock 
-                        Name="fontLabel"
-                        Grid.Column="1" Grid.Row="0" Grid.ColumnSpan="2" 
-                        Margin="{StaticResource DefaultMargin}" 
-                        Cursor="Hand" Text="1234567890 ABCDEF АБВГД" MouseUp="fontLabel_MouseUp" />
-                    <TextBlock 
-                        Grid.Column="0" Grid.Row="1" 
-                        FontWeight="Bold" Text="Символы:" />
-                    <TextBox
-                        Name="fontSymbolLabel"
-                        Grid.Column="1" Grid.Row="1" Text="+-1234567890 ABCDEFGIJKLMNOPQRSTUVWXYZ" />
-                    <Border Name="fontForeColor" ToolTip="Цвет шрифта" Background="Black" Grid.Column="2" Grid.Row="1" MouseUp="ColorBorder_MouseUp" />
-                    <Border Name="fontBackColor" ToolTip="Цвет фона" Background="White" Grid.Column="3" Grid.Row="1" MouseUp="ColorBorder_MouseUp" />
+                    <!-- Шрифт -->
+                    <TextBlock Grid.Column="0"  Grid.Row="0" Text="Шрифт:" />
+                    <TextBlock Grid.Column="1" 
+                               Grid.Row="0" 
+                               Name="fontLabel" 
+                               Margin="{StaticResource FieldMargin}" 
+                               FontWeight="Normal" 
+                               Cursor="Hand" 
+                               Text="1234567890 ABCDEF АБВГД" 
+                               MouseUp="fontLabel_MouseUp" />
+                    <!-- Символы -->
+                    <TextBlock Grid.Column="0" Grid.Row="1" Text="Символы:" />
+                    <TextBox Grid.Column="1" 
+                             Grid.Row="1" 
+                             Name="fontSymbolLabel" 
+                             Text="+-1234567890 ABCDEFGIJKLMNOPQRSTUVWXYZ" />
                 </Grid>
             </GroupBox>
+            <!-- Из изображения -->
             <GroupBox>
                 <GroupBox.Header>
                     <RadioButton Content="Из изображения" GroupName="mode" />
@@ -85,22 +79,28 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0" FontWeight="Bold" Text="Файл:" />
+                    <!-- Поле выбора файла -->
+                    <TextBlock Grid.Column="0" Text="Файл:" />
                     <TextBox Name="imageFilePathBox" Grid.Column="1" IsReadOnly="True" />
-                    <Button Name="selectImageFileButton" Grid.Column="2" Content="..." HorizontalAlignment="Left" Margin="0,4,0,5" Click="selectImageFileButton_Click" />
+                    <Button Grid.Column="2" 
+                            Name="selectImageFileButton" 
+                            Padding="5 1" 
+                            Margin="10 0 0 0" 
+                            Content="..." 
+                            HorizontalAlignment="Left" 
+                            Click="selectImageFileButton_Click" />
                 </Grid>
             </GroupBox>
             <!-- Кнопка генерации -->
-            <Button Name="generateButton" Margin="5 10" Content="Сгенерировать" Click="generateButton_Click" />
+            <Button Name="generateButton" Margin="5 10" Padding="5 3" Content="Сгенерировать" Click="generateButton_Click" />
         </StackPanel>
         <!-- Поле вывода -->
-        <TextBox 
-            Name="outputBox" 
-            Grid.Row="1" 
-            IsReadOnly="True" 
-            Text="// Нет данных" 
-            FontFamily="Lucida Console" 
-            HorizontalScrollBarVisibility="Auto" 
-            VerticalScrollBarVisibility="Visible"/>
+        <TextBox Grid.Row="1"
+                 Name="outputBox" 
+                 IsReadOnly="True" 
+                 Text="// Нет данных" 
+                 FontFamily="Lucida Console" 
+                 HorizontalScrollBarVisibility="Auto" 
+                 VerticalScrollBarVisibility="Visible"/>
     </Grid>
 </Window>

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 
@@ -11,13 +12,13 @@ namespace Vito.Resgen
     internal static class ByteTools
     {
         /// <summary>
-        /// Компрессор входных 16-бит данных в 8-ми битный поток по RLE алгоритму
+        /// RLE сжатие
         /// </summary>
-        public static byte[] RleCompressor(IEnumerable<ushort> data)
+        public static byte[] RleCompressor(IEnumerable<byte> data)
         {
             var result = new List<byte>();
             // Подготовка
-            ushort last = 0;
+            byte last = 0;
             byte lastRepeat = 0;
             // Добавление чанка
             Action addChunk = () =>
@@ -25,14 +26,13 @@ namespace Vito.Resgen
                 if (lastRepeat <= 0)
                     return;
                 result.Add(lastRepeat);
-                result.AddRange(BitConverter.GetBytes(last));
+                result.Add(last);
                 lastRepeat = 0;
             };
-            // Обход входной последовательности
             foreach (var value in data)
             {
-                // Добавляем чанк если данные сменились или повторы превысили 255
-                if ((lastRepeat > 0 && last != value) || lastRepeat >= 255)
+                // Добавляем чанк если данные сменились или количество повторов не переполнило байт
+                if ((lastRepeat > 0 && last != value) || lastRepeat >= byte.MaxValue)
                     addChunk();
                 last = value;
                 lastRepeat++;
@@ -44,7 +44,7 @@ namespace Vito.Resgen
         /// <summary>
         /// Конвертирование набора байт в блок инициалзиации C/C++
         /// </summary>
-        public static string BytesToCppBlock(IList<byte> data, int columnWidth = 8, int indentWidth = 4)
+        public static string BytesToCppBlock(IList<byte> data, int columnWidth = 16, int indentWidth = 4)
         {
             var indentStart = new String(' ', indentWidth);
             // Подготовка буфера

@@ -13,44 +13,31 @@ namespace Vito.Resgen
     {
         #region convert
         /// <summary>
-        /// Упаковка компоненты цвета
+        /// Конвертирование RGB изображения в 8-бит градацию серого
         /// </summary>
-        private static int PackComponent(int value, int max, int pos)
-        {
-            return (value * max / 255) << pos;
-        }
-
-        /// <summary>
-        /// Упаковка компонентов цвета в формат 5-6-5
-        /// </summary>
-        private static ushort PackColor(Color color)
-        {
-            var temp = PackComponent(color.R, 31, 11) |
-                       PackComponent(color.G, 63, 6) |
-                       PackComponent(color.B, 31, 0);
-            // Свап (LE)
-            return (ushort)(((temp >> 8) & 0xFF) | ((temp & 0xFF) << 8));
-        }
-
-        /// <summary>
-        /// Конвертирование RGB изображения в 16-бит цвет формата 5-6-5
-        /// </summary>
-        public static ushort[] Convert565(Bitmap image, Rectangle area)
+        public static byte[] ConvertGrayscale(Bitmap image, Rectangle area)
         {
             var index = 0;
-            var result = new ushort[area.Width * area.Height];
+            var result = new byte[area.Width * area.Height];
             // Обход пикселей
             for (var y = area.Top; y < area.Bottom; y++)
             {
                 for (var x = area.Left; x < area.Right; x++)
-                    result[index++] = PackColor(image.GetPixel(x, y));
+                {
+                    var color = image.GetPixel(x, y);
+                    // Среднее значение RGB
+                    var avg = 255 - (color.R + color.G + color.B) / 3;
+                    // Применение альфа канала
+                    avg = avg * color.A / 255;
+                    // В буфер
+                    result[index++] = (byte)avg;
+                }
             }
             return result;
         }
         #endregion
 
         #region bounds
-
         /// <summary>
         /// Поиск точки в прямом направлении
         /// </summary>
@@ -84,25 +71,25 @@ namespace Vito.Resgen
         }
 
         /// <summary>
-        /// Определение размеров реального изображения с учетом указанного цвета фона
+        /// Определение размеров реального изображения с учетом белого цвета фона
         /// </summary>
-        public static Rectangle ImageBounds(Bitmap image, Rectangle area, Color backgroundColor)
+        public static Rectangle ImageBounds(Bitmap image, Rectangle area)
         {
             var left = FindPointForward(
                 area.Left, area.Right, area.Top, area.Bottom, 
-                (x, y) => IsDifferentColors(image.GetPixel(x, y), backgroundColor));
+                (x, y) => IsDifferentColors(image.GetPixel(x, y), Color.White));
 
             var right = FindPointBackward(
                 area.Left, area.Right, area.Top, area.Bottom, 
-                (x, y) => IsDifferentColors(image.GetPixel(x, y), backgroundColor));
+                (x, y) => IsDifferentColors(image.GetPixel(x, y), Color.White));
 
             var top = FindPointForward(
                 area.Top, area.Bottom, area.Left, area.Right,
-                (y, x) => IsDifferentColors(image.GetPixel(x, y), backgroundColor));
+                (y, x) => IsDifferentColors(image.GetPixel(x, y), Color.White));
 
             var bottom = FindPointBackward(
                 area.Top, area.Bottom, area.Left, area.Right,
-                (y, x) => IsDifferentColors(image.GetPixel(x, y), backgroundColor));
+                (y, x) => IsDifferentColors(image.GetPixel(x, y), Color.White));
 
             return new Rectangle(left, top, right - left, bottom - top);
         }
