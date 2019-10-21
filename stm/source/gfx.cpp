@@ -1,9 +1,40 @@
 ﻿#include "gfx.h"
 
 // Загрузка U16 в LE из массива байт
-#define GFX_LOAD_LE16(ptr)  ((uint16_t)(ptr)[0] | ((uint16_t)(ptr)[1] << 8))
+#define GFX_LOAD_LE16(ptr)              ((uint16_t)(ptr)[0] | ((uint16_t)(ptr)[1] << 8))
 // Размер внутреннего буфера
-#define GFX_BUFFER_SIZE     MAX(LCD_SIZE_WIDTH, LCD_SIZE_HEIGHT)
+#define GFX_BUFFER_SIZE                 MAX(LCD_SIZE_WIDTH, LCD_SIZE_HEIGHT)
+// Максимальное количество повторов при режиме вывода данных как есть
+#define GFX_RLE_REPEAT_ORIG_MAX         4
+// Базовое смещение значения повторов при режиме вывода данных как есть
+#define GFX_RLE_REPEAT_ORIG_BASE        (255 - GFX_RLE_REPEAT_ORIG_MAX + 1)
+
+// Тип под компоненту цвета
+typedef int_fast16_t gfx_comp_t;
+
+// Струтура цвета разложенного по компонентам
+typedef struct
+{
+    gfx_comp_t r, g, b;
+    
+    // Декодирование из 16-бит цвета
+    void decode(lcd_color_t source)
+    {
+        source = lcd_color_swap(source);
+        b = (source >> LCD_COLOR_POS_B) & LCD_COLOR_MAX_B;
+        g = (source >> LCD_COLOR_POS_G) & LCD_COLOR_MAX_G;
+        r = (source >> LCD_COLOR_POS_R) & LCD_COLOR_MAX_R;
+    }
+    
+    // Кодирование в 16-бит цвет
+    lcd_color_t encode(void) const
+    {
+        return lcd_color_swap(LCD_COLOR_RAW(r, g, b));
+    }
+} gfx_color_t;
+
+// Буферы цвета для вывода изображений
+static __no_init gfx_color_t gfx_foreground, gfx_background;
 
 // Внутренний буфер общего назначения
 static __no_init lcd_color_t gfx_buffer[GFX_BUFFER_SIZE];
@@ -44,32 +75,45 @@ void gfx_rect_solid(lcd_color_t color, uint16_t x, uint16_t y, uint16_t width, u
         lcd_out(gfx_buffer, width);
 }
 
-void gfx_image_raw(const lcd_color_t *data, uint16_t x, uint16_t y, uint16_t width, uint16_t height)
-{
-    lcd_area(x, y, width, height);
-    lcd_out(data, width * height);
-}
-
-void gfx_image_rle(const uint8_t *data, uint16_t x, uint16_t y, uint16_t width, uint16_t height)
+// Вывод изображения сжатого RLE
+static void gfx_image_rle(const uint8_t *data, uint16_t x, uint16_t y, uint16_t width, uint16_t height)
 {
     uint16_t buffer_offset = 0;
+    // Подготовка компонентов цвета
+    const gfx_color_t dx =
+    {
+        gfx_foreground.r - gfx_background.r,
+        gfx_foreground.g - gfx_background.g,
+        gfx_foreground.b - gfx_background.b,
+    };
     // Подготовка области
     lcd_area(x, y, width, height);
     // Обход данных
-    for (uint32_t written = width * height; written > 0;)
+    for (uint32_t written = width * height; written > 0; data += 2)
     {
-        // Выводимый цвет
-        lcd_color_t color = GFX_LOAD_LE16(data + 1);
+        // Количество повторов
+        auto repeat = data[0];
+        const gfx_comp_t grad = data[1];
+        
+        // Рассчет цвета
+        const gfx_color_t t =
+        {
+            dx.r * grad / LCD_COLOR_COMP_MAX + gfx_background.r,
+            dx.g * grad / LCD_COLOR_COMP_MAX + gfx_background.g,
+            dx.b * grad / LCD_COLOR_COMP_MAX + gfx_background.b,
+        };
+        const lcd_color_t color = t.encode();
+        
         // Помещаем в буфер
-        for (uint8_t repeat = data[0]; repeat > 0;)
+        while (repeat > 0)
         {
             // Определеие свободной области буфера
             uint16_t avail = GFX_BUFFER_SIZE - buffer_offset;
             avail = MIN(avail, repeat);
             // Заполнение буфера
             gfx_buffer_fill(color, avail, buffer_offset);
-            // Смещение
             buffer_offset += avail;
+            // Смещение
             written -= avail;
             repeat -= avail;
             // Передача
@@ -78,18 +122,28 @@ void gfx_image_rle(const uint8_t *data, uint16_t x, uint16_t y, uint16_t width, 
             lcd_out(gfx_buffer, buffer_offset);
             buffer_offset = 0;
         }
-        // Переход к следующему чанку
-        data += 3;
     }
     // Вывод не переданной части буфера
     if (buffer_offset > 0)
         lcd_out(gfx_buffer, buffer_offset);
 }
 
-uint16_t gfx_font_symbol(char symbol, uint16_t x, uint16_t y, const uint8_t *font)
+void gfx_image(const uint8_t *image, uint16_t x, uint16_t y, lcd_color_t foreground, lcd_color_t background)
 {
+    // Конвертирование цветов
+    gfx_foreground.decode(foreground);
+    gfx_background.decode(background);
+    // Вывод
+    gfx_image_rle(image + 2, x, y, image[0], image[1]);
+}
+
+// Вывод одного символа
+static uint16_t gfx_symbol(char symbol, const uint8_t *font, uint16_t x, uint16_t y)
+{
+    // Высота символа
     uint8_t height = font[0];
     font += 1;
+    // Обход имеющихся символов
     for (;;)
     {
         // Чтение заголовка
@@ -111,13 +165,16 @@ uint16_t gfx_font_symbol(char symbol, uint16_t x, uint16_t y, const uint8_t *fon
     }
 }
 
-uint16_t gfx_font_string(const char *string, uint16_t x, uint16_t y, const uint8_t *font)
+uint16_t gfx_string(const char *string, const uint8_t *font, uint16_t x, uint16_t y, lcd_color_t foreground, lcd_color_t background)
 {
-    uint16_t total_width = 0;
+    // Конвертирование цветов
+    gfx_foreground.decode(foreground);
+    gfx_background.decode(background);
     // Обход символов
+    uint16_t total_width = 0;
     for (; *string != '\0'; string++)
     {
-        auto width = gfx_font_symbol(*string, x, y, font);
+        auto width = gfx_symbol(*string, font, x, y);
         total_width += width;
         x += width;
     }
