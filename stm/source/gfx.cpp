@@ -1,4 +1,5 @@
 ﻿#include "gfx.h"
+#include "image.h"
 
 // Загрузка U16 в LE из массива байт
 #define GFX_LOAD_LE16(ptr)              ((uint16_t)(ptr)[0] | ((uint16_t)(ptr)[1] << 8))
@@ -13,7 +14,7 @@
 typedef int_fast16_t gfx_comp_t;
 
 // Струтура цвета разложенного по компонентам
-typedef struct
+struct gfx_color_t
 {
     gfx_comp_t r, g, b;
     
@@ -31,7 +32,7 @@ typedef struct
     {
         return lcd_color_swap(LCD_COLOR_RAW(r, g, b));
     }
-} gfx_color_t;
+};
 
 // Буферы цвета для вывода изображений
 static __no_init gfx_color_t gfx_foreground, gfx_background;
@@ -47,10 +48,10 @@ static void gfx_buffer_fill(lcd_color_t color, uint16_t count, uint16_t offset =
         gfx_buffer[i] = color;
 }
 
-void gfx_rect_frame(lcd_color_t color, uint16_t x, uint16_t y, uint16_t width, uint16_t height)
+void gfx_rect_frame(uint16_t x, uint16_t y, uint16_t width, uint16_t height, lcd_color_t foreground)
 {
     // Заполнение буфера цветом
-    gfx_buffer_fill(color, MAX(width, height));
+    gfx_buffer_fill(foreground, MAX(width, height));
     // Верх
     lcd_area(x, y, width, 1);
     lcd_out(gfx_buffer, width);
@@ -65,14 +66,38 @@ void gfx_rect_frame(lcd_color_t color, uint16_t x, uint16_t y, uint16_t width, u
     lcd_out(gfx_buffer, height);
 }
 
-void gfx_rect_solid(lcd_color_t color, uint16_t x, uint16_t y, uint16_t width, uint16_t height)
+void gfx_rect_solid(uint16_t x, uint16_t y, uint16_t width, uint16_t height, lcd_color_t background)
 {
     // Заполнение буфера цветом
-    gfx_buffer_fill(color, width);
+    gfx_buffer_fill(background, width);
     // Вывод по сторкам
     lcd_area(x, y, width, height);
     for (; height > 0; height--)
         lcd_out(gfx_buffer, width);
+}
+
+void gfx_rect_frame_round(uint16_t x, uint16_t y, uint16_t width, uint16_t height, lcd_color_t foreground, lcd_color_t background)
+{
+    // Толщина границы
+    const uint16_t thickness = 3;
+    // Границы
+        // Верх
+    gfx_rect_solid(x, y - thickness, width, thickness, foreground);
+        // Право
+    gfx_rect_solid(x + width, y, thickness, height, foreground);
+        // Низ
+    gfx_rect_solid(x, y + height, width, thickness, foreground);
+        // Лево
+    gfx_rect_solid(x - thickness, y, thickness, height, foreground);
+    // Тайлы
+        // LT
+    gfx_image(IMAGE_ROUND_LT, x - thickness, y - thickness, foreground, background);
+        // RT
+    gfx_image(IMAGE_ROUND_RT, x + width, y - thickness, foreground, background);
+        // RB
+    gfx_image(IMAGE_ROUND_RB, x + width, y + height, foreground, background);
+        // LB
+    gfx_image(IMAGE_ROUND_LB, x - thickness, y + height, foreground, background);
 }
 
 // Вывод изображения сжатого RLE

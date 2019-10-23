@@ -4,7 +4,7 @@
 #include "typedefs.h"
 
 // Перечисление видов кнопок
-typedef enum
+enum key_kind_t
 {
     // Ввод
     KEY_KIND_ENTER,
@@ -14,16 +14,16 @@ typedef enum
     KEY_KIND_DOWN,
     // Назад
     KEY_KIND_BACK,
-} key_kind_t;
+};
 
 // Состяоние кнопки
-typedef enum
+enum key_state_t
 {
     // Отпущена
     KEY_STATE_RELEASED,
     // Нажата
     KEY_STATE_PRESSED,
-} key_state_t;
+};
 
 // Инициализация модуля
 void key_init(void);
