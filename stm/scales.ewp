@@ -439,7 +439,7 @@
                 </option>
                 <option>
                     <name>CCEncOutput</name>
-                    <state>0</state>
+                    <state>1</state>
                 </option>
                 <option>
                     <name>CCEncOutputBom</name>
@@ -1070,6 +1070,15 @@
         </file>
         <file>
             <name>$PROJ_DIR$\source\timer.cpp</name>
+        </file>
+    </group>
+    <group>
+        <name>resources</name>
+        <file>
+            <name>$PROJ_DIR$\source\font.cpp</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\source\image.cpp</name>
         </file>
     </group>
     <file>
