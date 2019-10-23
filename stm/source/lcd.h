@@ -32,15 +32,6 @@ typedef uint16_t lcd_color_t;
 // Макрос расчета цвета
 #define LCD_COLOR_MAKE(r, g, b)     SWAP_16(LCD_COLOR_RAW(LCD_COLOR_COMP_R(r), LCD_COLOR_COMP_G(g), LCD_COLOR_COMP_B(b)))
 
-// Стандартные цвета
-#define LCD_COLOR_BLACK             LCD_COLOR_MAKE(0, 0, 0)
-#define LCD_COLOR_RED               LCD_COLOR_MAKE(LCD_COLOR_COMP_MAX, 0, 0)
-#define LCD_COLOR_GREEN             LCD_COLOR_MAKE(0, LCD_COLOR_COMP_MAX, 0)
-#define LCD_COLOR_BLUE              LCD_COLOR_MAKE(0, 0, LCD_COLOR_COMP_MAX)
-#define LCD_COLOR_WHITE             LCD_COLOR_MAKE(LCD_COLOR_COMP_MAX, LCD_COLOR_COMP_MAX, LCD_COLOR_COMP_MAX)
-
-#define LCD_COLOR_NAV               LCD_COLOR_MAKE(0, 178, 232)
-
 // Инициализация модуля
 void lcd_init(void);
 // Обалсти вывода данных

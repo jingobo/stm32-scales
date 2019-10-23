@@ -4,7 +4,7 @@
 #include "system.h"
 
 // Причина остановки
-typedef enum
+enum mcu_halt_reason_t
 {
     // Не удалось запустить HSE осцилятор или он встал
     MCU_HALT_REASON_RCC,
@@ -23,17 +23,17 @@ typedef enum
     MCU_HALT_REASON_BUS,
     // Исключение Usage Fault
     MCU_HALT_REASON_USG
-} mcu_halt_reason_t;
+};
 
 // Источник тактирования вывода частоты
-typedef enum
+enum mcu_mco_source_t
 {
     MCU_MCO_SOURCE_NONE = 0x00,
     MCU_MCO_SOURCE_SYS = RCC_CFGR_MCOSEL_0,
     MCU_MCO_SOURCE_HSI = RCC_CFGR_MCOSEL_0 | RCC_CFGR_MCOSEL_1,
     MCU_MCO_SOURCE_HSE = RCC_CFGR_MCOSEL_2,
     MCU_MCO_SOURCE_PLL = RCC_CFGR_MCOSEL_0 | RCC_CFGR_MCOSEL_2
-} mcu_mco_source_t;
+};
 
 // Прототип функции опроса для операций с таймаутом
 typedef bool (*mcu_pool_handler_ptr)(void);

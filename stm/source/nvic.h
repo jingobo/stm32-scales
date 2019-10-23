@@ -4,7 +4,7 @@
 #include "system.h"
 
 // Приоритеты прерываний, от низкого к высокому
-typedef enum
+enum nvic_irq_priority_t
 {
     NVIC_IRQ_PRIORITY_0 = 15,
     NVIC_IRQ_PRIORITY_1 = 14,
@@ -22,7 +22,7 @@ typedef enum
     NVIC_IRQ_PRIORITY_13 = 2,
     NVIC_IRQ_PRIORITY_14 = 1,
     NVIC_IRQ_PRIORITY_15 = 0
-} nvic_irq_priority_t;
+};
 
 // Низкий и высокий приоритет прерывания
 #define NVIC_IRQ_PRIORITY_LOWEST    NVIC_IRQ_PRIORITY_0

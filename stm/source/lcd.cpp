@@ -4,7 +4,7 @@
 #include "spi.h"
 
 // Коды команд контроллера LCD
-typedef enum
+enum lcd_command_t
 {
     // Level 1
     LCD_COMMAND_SWRESET             = 0x01, // Software Reset
@@ -93,7 +93,7 @@ typedef enum
     LCD_COMMAND_POWER_SEQ           = 0xED, // Power on sequence register
     LCD_COMMAND_3GAMMA_EN           = 0xF2, // 3 Gamma enable register
     LCD_COMMAND_PRC                 = 0xF7, // Pump ratio control register
-} lcd_command_t;
+};
 
 // Передача данных
 static void lcd_data(const void *data, size_t size)
@@ -149,7 +149,7 @@ void lcd_init(void)
     
     // SOFTWARE RESET
     lcd_command(LCD_COMMAND_SWRESET);
-    mcu_delay_ms(1000);
+    mcu_delay_ms(100);
 
     // POWER CONTROL A
     lcd_command_va(LCD_COMMAND_POWERA, 5, 0x39, 0x2C, 0x00, 0x34, 0x02);
