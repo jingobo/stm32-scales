@@ -60,32 +60,4 @@ public:
     }
 };
 
-// Класс элемента списка функций обратного вызова
-class callback_list_item_t : public list_item_t
-{
-    friend class callback_list_t;
-    // Функция обратного вызова
-    callback_t callback;
-public:
-    // Конструктор по умолчанию
-    callback_list_item_t(callback_t cb) : callback(cb)
-    { }
-
-    // Конструктор для лямбд
-    callback_list_item_t(callback_proc_ptr lambda) : callback(lambda)
-    { }
-};
-
-// Класс списка функций обратного вызова
-class callback_list_t : public list_template_t<callback_list_item_t>
-{
-public:
-    // Вызов цепочки функций обратного вызова
-    void operator ()(void) const
-    {
-        for (auto item = head(); item != NULL; item = LIST_ITEM_NEXT(item))
-            item->callback();
-    }
-};
-
 #endif // __CALLBACK_H

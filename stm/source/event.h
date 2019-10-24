@@ -4,9 +4,16 @@
 #include "list.h"
 #include "callback.h"
 
+// Предварительное объявление
+class event_t;
+// Элемент оболочка для события в списках
+typedef list_item_template_t<event_t> event_wrap_t;
+
 // Класс базового события
-class event_t : list_item_t
+class event_t
 {
+    // Элемент связанного списка
+    event_wrap_t item;
     // Указывает, что элемент добавлен и ожидает обработки
     bool pending;
 protected:
@@ -14,7 +21,7 @@ protected:
     virtual void execute(void) = 0;
 public:
     // Конструктор по умолчанию
-    event_t(void) : pending(false)
+    event_t(void) : pending(false), item(*this)
     { }
     
     // Генерация события

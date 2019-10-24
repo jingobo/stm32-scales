@@ -5,9 +5,9 @@
 static struct event_list_t
 {
     // Один список накопляемый, второй обрабатываемый
-    list_template_t<event_t> item[2];
+    list_template_t<event_wrap_t> item[2];
     // Указатель на накопляемый список
-    list_template_t<event_t> *active;
+    list_template_t<event_wrap_t> *active;
     
     // Конструктор по умолчанию
     event_list_t(void) : active(item)
@@ -26,7 +26,7 @@ void event_t::raise(void)
         }
         // Блокирование
         pending = true;
-        this->link(*event_list.active, LIST_SIDE_HEAD);
+        item.link(*event_list.active, LIST_SIDE_HEAD);
     IRQ_SAFE_LEAVE();
 }
 
@@ -57,14 +57,14 @@ __noreturn void event_t::loop(void)
             // Получаем первый элемент списка
             auto &event = *event_list.item[i].head();
             // Проверка состояния
-            assert(event.pending);
+            assert(event.holder.pending);
             // Вызов события
-            event.execute();
+            event.holder.execute();
             // Удаляем из списка
             event.unlink();
             // Cбрасываем флаг ожидания
             IRQ_CTX_DISABLE();
-                event.pending = false;
+                event.holder.pending = false;
             IRQ_CTX_RESTORE();
         } while (!event_list.item[i].empty());
     }

@@ -29,18 +29,8 @@ typedef uint8_t timer_flag_t;
 
 // Предварительное объявление
 class timer_base_t;
-
-// Списочнаяя оболочка для таймера
-class timer_wrap_t : public list_item_t
-{
-public:
-    // Ссылка на родительский таймер
-    timer_base_t &timer;
-    
-    // Конструктор по умолчанию
-    timer_wrap_t(timer_base_t &_timer) : timer(_timer)
-    { }
-};
+// Элемент оболочка для таймера в списках
+typedef list_item_template_t<timer_base_t> timer_wrap_t;
 
 // Класс базового софтового таймера
 class timer_base_t

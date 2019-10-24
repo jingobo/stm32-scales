@@ -121,7 +121,7 @@ void timer_base_t::call_event_cb(void)
         {
             // Обработка тика таймера
             IRQ_CTX_RESTORE();
-                wrap->timer.execute();
+                wrap->holder.execute();
             IRQ_CTX_DISABLE();
             // Переход к следующему элементу
             wrap = (timer_wrap_t *)wrap->unlink();
@@ -142,7 +142,7 @@ void timer_base_t::interrupt_htim(void)
         // Обработка таймеров
         for (auto wrap = timer_list.active.head(); wrap != NULL;)
         {
-            auto &timer = wrap->timer;
+            auto &timer = wrap->holder;
             if (timer.current <= dx)
             {
                 // Генерирование события

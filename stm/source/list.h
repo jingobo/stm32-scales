@@ -195,4 +195,17 @@ public:
     bool contains(const list_item_t &item, list_side_t side = LIST_SIDE_NEXT) const;
 };
 
+// Шаблон элемента списка с ссылкой на хозяина
+template <typename HOLDER>
+class list_item_template_t : public list_item_t
+{
+public:
+    // Ссылка на родительский объект
+    HOLDER &holder;
+    
+    // Конструктор по умолчанию
+    list_item_template_t(HOLDER &_holder) : holder(_holder)
+    { }
+};
+
 #endif // __LIST_H
