@@ -11,5 +11,6 @@ void gfx_rect_frame_round(uint16_t x, uint16_t y, uint16_t width, uint16_t heigh
 void gfx_image(const uint8_t *image, uint16_t x, uint16_t y, lcd_color_t foreground, lcd_color_t background);
 // Текст
 uint16_t gfx_string(const char *string, const uint8_t *font, uint16_t x, uint16_t y, lcd_color_t foreground, lcd_color_t background);
+uint16_t gfx_string_measure(const char *string, const uint8_t *font);
 
 #endif // __GFX_H

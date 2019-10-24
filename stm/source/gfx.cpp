@@ -1,4 +1,5 @@
 ﻿#include "gfx.h"
+#include "font.h"
 #include "image.h"
 
 // Загрузка U16 в LE из массива байт
@@ -155,6 +156,7 @@ static void gfx_image_rle(const uint8_t *data, uint16_t x, uint16_t y, uint16_t 
 
 void gfx_image(const uint8_t *image, uint16_t x, uint16_t y, lcd_color_t foreground, lcd_color_t background)
 {
+    assert(image != NULL);
     // Конвертирование цветов
     gfx_foreground.decode(foreground);
     gfx_background.decode(background);
@@ -163,10 +165,10 @@ void gfx_image(const uint8_t *image, uint16_t x, uint16_t y, lcd_color_t foregro
 }
 
 // Вывод одного символа
-static uint16_t gfx_symbol(char symbol, const uint8_t *font, uint16_t x, uint16_t y)
+static uint16_t gfx_symbol(char symbol, const uint8_t *font, uint16_t x, uint16_t y, bool paint)
 {
     // Высота символа
-    uint8_t height = font[0];
+    auto height = font_height_get(font);
     font += 1;
     // Обход имеющихся символов
     for (;;)
@@ -185,23 +187,38 @@ static uint16_t gfx_symbol(char symbol, const uint8_t *font, uint16_t x, uint16_
             continue;
         }
         // Вывод
-        gfx_image_rle(font, x, y, width, height);
+        if (paint)
+            gfx_image_rle(font, x, y, width, height);
         return width;
     }
 }
 
-uint16_t gfx_string(const char *string, const uint8_t *font, uint16_t x, uint16_t y, lcd_color_t foreground, lcd_color_t background)
+// Внутренняя функция вывода строки
+static uint16_t gfx_string_internal(const char *string, const uint8_t *font, uint16_t x, uint16_t y, bool paint)
 {
-    // Конвертирование цветов
-    gfx_foreground.decode(foreground);
-    gfx_background.decode(background);
-    // Обход символов
     uint16_t total_width = 0;
+    // Обход символов
     for (; *string != '\0'; string++)
     {
-        auto width = gfx_symbol(*string, font, x, y);
+        auto width = gfx_symbol(*string, font, x, y, paint);
         total_width += width;
         x += width;
     }
     return total_width;
+}
+
+
+uint16_t gfx_string(const char *string, const uint8_t *font, uint16_t x, uint16_t y, lcd_color_t foreground, lcd_color_t background)
+{
+    assert(string != NULL);
+    // Конвертирование цветов
+    gfx_foreground.decode(foreground);
+    gfx_background.decode(background);
+    // Вывод
+    return gfx_string_internal(string, font, x, y, true);
+}
+
+uint16_t gfx_string_measure(const char *string, const uint8_t *font)
+{
+    return gfx_string_internal(string, font, 0, 0, false);
 }
