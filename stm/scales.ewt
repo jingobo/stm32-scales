@@ -1186,6 +1186,9 @@
         <file>
             <name>$PROJ_DIR$\source\list.cpp</name>
         </file>
+        <file>
+            <name>$PROJ_DIR$\source\timer.cpp</name>
+        </file>
     </group>
     <group>
         <name>peripheral</name>
@@ -1206,9 +1209,6 @@
         </file>
         <file>
             <name>$PROJ_DIR$\source\spi.cpp</name>
-        </file>
-        <file>
-            <name>$PROJ_DIR$\source\timer.cpp</name>
         </file>
     </group>
     <group>
