@@ -7,6 +7,7 @@
 #include "nvic.h"
 #include "event.h"
 #include "timer.h"
+#include "weight.h"
 
 // Точка входа в приложение
 __task __noreturn void main(void)
@@ -21,6 +22,7 @@ __task __noreturn void main(void)
     adc_init();
     lcd_init();
     gui_init();
+    weight_init();
     
     // Главный цикл событий
     event_t::loop();
