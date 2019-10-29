@@ -32,7 +32,7 @@ static struct timer_list_t
 static timer_period_t timer_ccr = 0;
 
 // Событие вызова обработчиков сработавших таймеров
-event_callback_t timer_base_t::call_event(call_event_cb);
+event_notify_t timer_t::call_event(call_event_cb);
 
 // Установка нового значения для регистра захвата/сравнения
 OPTIMIZE_SPEED
@@ -45,7 +45,7 @@ static void timer_ccr_inc(timer_period_t delta)
     TIM3->SR &= ~TIM_SR_CC1IF;                                                  // Clear IRQ CC1 pending flag
 }
 
-void timer_base_t::start(uint32_t interval, timer_flag_t flags)
+void timer_t::start(uint32_t interval, timer_flag_t flags)
 {
     // Проверка аргументов
     assert(interval > 0);
@@ -67,19 +67,19 @@ void timer_base_t::start(uint32_t interval, timer_flag_t flags)
     timer_ccr_inc(TIMER_PERIOD_MIN);
 }
 
-void timer_base_t::start_hz(float_t hz, timer_flag_t flags)
+void timer_t::start_hz(float_t hz, timer_flag_t flags)
 {
     assert(hz > 0);
     assert(hz <= TIMER_FREQUENCY_HZ);
     start((uint32_t)(TIMER_FREQUENCY_HZ / hz), flags);
 }
 
-void timer_base_t::start_us(uint32_t us, timer_flag_t flags)
+void timer_t::start_us(uint32_t us, timer_flag_t flags)
 {
     start(us / TIMER_US_PER_TICK, flags);
 }
 
-bool timer_base_t::stop(void)
+bool timer_t::stop(void)
 {
     bool result = false;
     // Отключаем все прерывания
@@ -93,7 +93,7 @@ bool timer_base_t::stop(void)
     return result;
 }
 
-void timer_base_t::raise(void)
+void timer_t::raise(void)
 {
     // Отключаем все прерывания
     IRQ_SAFE_ENTER();
@@ -112,7 +112,7 @@ void timer_base_t::raise(void)
 }
 
 OPTIMIZE_SPEED
-void timer_base_t::call_event_cb(void)
+void timer_t::call_event_cb(void)
 {
     // Отключаем все прерывания
     IRQ_CTX_SAVE();
@@ -131,7 +131,7 @@ void timer_base_t::call_event_cb(void)
 }
 
 IRQ_ROUTINE
-void timer_base_t::interrupt_htim(void)
+void timer_t::interrupt_htim(void)
 {
         bool event_raise = false;
         timer_period_t dx, dt, ccr = TIMER_PERIOD_MAX;

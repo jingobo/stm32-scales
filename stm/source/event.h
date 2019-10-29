@@ -2,7 +2,6 @@
 #define __EVENT_H
 
 #include "list.h"
-#include "callback.h"
 
 // Предварительное объявление
 class event_t;
@@ -32,23 +31,22 @@ public:
 };
 
 // Событие с функцией обратного вызова
-class event_callback_t : public event_t
+class event_notify_t : public event_t
 {
-    callback_t callback;
+    // Вызываемая функция
+    notify_proc_ptr proc;
 protected:
     // Обработка события
     virtual void execute(void)
     {
-        callback();
+        proc();
     }
 public:
     // Конструктор по умолчанию
-    event_callback_t(callback_t cb) : callback(cb)
-    { }
-    
-    // Конструктор для лямбд
-    event_callback_t(callback_proc_ptr lambda) : callback(lambda)
-    { }
+    event_notify_t(notify_proc_ptr _proc) : proc(_proc)
+    {
+        assert(proc != NULL);
+    }
 };
 
 #endif // __EVENT_H
