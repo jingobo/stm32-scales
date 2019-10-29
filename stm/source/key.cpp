@@ -1,23 +1,25 @@
 ﻿#include "io.h"
 #include "key.h"
-#include "gui.h"
 #include "nvic.h"
 #include "timer.h"
 
-// Предварительное объявление
-class key_t;
+// Список обработчиков события клавиш
+key_event_handler_t::list_t key_event_list;
 
-// Класс таймера для кнопки
-class key_timer_t : timer_base_t
+// Предварительное объявление
+class key_data_t;
+
+// Класс таймера для клавиши
+class key_timer_t : timer_t
 {
-    // Кнопка хозяин
-    key_t &owner;
+    // Хозяин
+    key_data_t &owner;
 protected:
     // Обработка тика таймера
     virtual void execute(void);
 public:
     // Конструктор по умолчанию
-    key_timer_t(key_t &_owner) : owner(_owner)
+    key_timer_t(key_data_t &_owner) : owner(_owner)
     { }
     
     // Запуск таймера
@@ -28,7 +30,7 @@ public:
 };
 
 // Класс данных кнопки
-class key_t
+class key_data_t
 {
     friend class key_timer_t;
     
@@ -57,6 +59,17 @@ class key_t
             KEY_STATE_PRESSED;
     }
     
+    // Вызов обработчиков событий клавиш
+    void call_event(void) const
+    {
+        key_event_args_t args =
+        {
+            kind,
+            state,
+        };
+        key_event_list(args);
+    }
+    
     // Обработчик таймера
     void timer_execute(void)
     {
@@ -64,12 +77,12 @@ class key_t
         if (press_delay > 0)
         {
             // Сокращение задержки (формула подобрана субъективно)
-            if (press_delay > 100)
+            if (press_delay > 10)
                 press_delay = press_delay * 3 / 5;
             // Рестарт таймера
             timer.start(press_delay);
             // Передача события
-            gui_key_event(kind, KEY_STATE_PRESSED);
+            call_event();
             return;
         }
         // Реальная смена состояния
@@ -78,14 +91,14 @@ class key_t
             return;
         state = state_new;
         // Передача события
-        gui_key_event(kind, state);
+        call_event();
         // Если кнопки нажата - залипание
         if (state == KEY_STATE_PRESSED)
             timer.start(press_delay = 1000);
     }
 public:
     // Конструктор по умолчанию
-    key_t(const GPIO_TypeDef *io_port, uint8_t io_index, key_kind_t _kind) : kind(_kind), timer(*this)
+    key_data_t(const GPIO_TypeDef *io_port, uint8_t io_index, key_kind_t _kind) : kind(_kind), timer(*this)
     {
         assert(io_port != NULL);
         assert(io_index < 16);
@@ -109,7 +122,7 @@ public:
 };
 
 // Используемые кнопки
-static key_t
+static key_data_t
     key_enter(IO_BTN_KEY1_PORT, IO_BTN_KEY1, KEY_KIND_ENTER),
     key_up(IO_BTN_KEY2_PORT, IO_BTN_KEY2, KEY_KIND_UP),
     key_down(IO_BTN_KEY3_PORT, IO_BTN_KEY3, KEY_KIND_DOWN),

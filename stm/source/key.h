@@ -1,9 +1,9 @@
 ﻿#ifndef __KEY_H
 #define __KEY_H
 
-#include "typedefs.h"
+#include "callback.h"
 
-// Перечисление видов кнопок
+// Перечисление видов клавиш
 enum key_kind_t
 {
     // Ввод
@@ -16,7 +16,7 @@ enum key_kind_t
     KEY_KIND_BACK,
 };
 
-// Состяоние кнопки
+// Состяоние клавиши
 enum key_state_t
 {
     // Отпущена
@@ -24,6 +24,21 @@ enum key_state_t
     // Нажата
     KEY_STATE_PRESSED,
 };
+
+// Аргументы события клавиш
+struct key_event_args_t
+{
+    // Вид клавиши
+    key_kind_t kind;
+    // Состояние клавиши
+    key_state_t state;
+};
+
+// Тип обработчика события клавиш
+typedef callback_t<const key_event_args_t &> key_event_handler_t;
+
+// Список обработчиков события клавиш
+extern key_event_handler_t::list_t key_event_list;
 
 // Инициализация модуля
 void key_init(void);
