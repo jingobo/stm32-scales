@@ -1,12 +1,12 @@
 // This file uses cp1251 encoding for russian C strings
 #include "gui.h"
 #include "gfx.h"
-#include "lcd.h"
+#include "key.h"
 #include "list.h"
 #include "font.h"
 #include "image.h"
 #include "timer.h"
-#include "callback.h"
+#include "weight.h"
 
 // Цвет темы
 enum gui_color_t
@@ -45,6 +45,11 @@ enum gui_color_t
     GUI_COLOR_BUTTON_BK_NORMAL,
     // Фон кнопки (в фокусе)
     GUI_COLOR_BUTTON_BK_FOCUSED,
+    
+    // Заливка границы рамки
+    GUI_COLOR_BEVEL_FK,
+    // Фон рамки
+    GUI_COLOR_BEVEL_BK,
     
     // Количество цветов
     GUI_COLOR_COUNT,
@@ -94,6 +99,11 @@ static const gui_theme_t GUI_THEMES[2] =
         LCD_COLOR_MAKE(34, 116, 165),
         // GUI_COLOR_BUTTON_BK_FOCUSED,
         LCD_COLOR_MAKE(0, 143, 226),
+
+        // GUI_COLOR_BEVEL_FK,
+        LCD_COLOR_MAKE(140, 140, 140),
+        // GUI_COLOR_BEVEL_BK,
+        LCD_COLOR_MAKE(150, 150, 150),
     },
 };
 
@@ -138,7 +148,7 @@ protected:
     void parent_refresh(void);
     
     // Обработчик события вывода на экран
-    virtual void paint_handler(uint16_t x, uint16_t y, gui_color_t background) = 0;
+    virtual void paint_self(uint16_t x, uint16_t y, gui_color_t background) = 0;
 public:
     // Получает координату по X
     uint16_t left_get(void) const
@@ -164,7 +174,7 @@ public:
         // Вывод текущего элемента
         if (!paint_needed)
             return;
-        paint_handler(offsetX + left, offsetY + top, background);
+        paint_self(offsetX + left, offsetY + top, background);
         paint_needed = false;
     }
     
@@ -183,23 +193,77 @@ public:
     }
 };
 
+// Базовый класс визуального элемента с размерами
+class gui_visual_sizeable_t : public gui_visual_t
+{
+    // Высота и ширина
+    uint16_t width, height;
+protected:
+    // Конструктор по умолчанию
+    gui_visual_sizeable_t(void) : width(0), height(0)
+    { }
+public:
+    // Получает ширину
+    uint16_t width_get(void) const
+    {
+        return width;
+    }
+    
+    // Задает ширину
+    void width_set(uint16_t value)
+    {
+        if (width == value)
+            return;
+        width = value;
+        parent_refresh();
+    }
+    
+    // Получает высоту
+    uint16_t height_get(void) const
+    {
+        return height;
+    }
+    
+    // Задает высоту
+    void height_set(uint16_t value)
+    {
+        if (height == value)
+            return;
+        height = value;
+        parent_refresh();
+    }
+};
+
 // Класс базового контейнера элементов
-class gui_container_t : public gui_visual_t
+class gui_container_t : public gui_visual_sizeable_t
 {
     // Список дочерних элементов
     list_template_t<gui_visual_wrap_t> childs;
+protected:
+    // Конструктор по умолчанию
+    gui_container_t(void)
+    {
+        width_set(LCD_SIZE_WIDTH);
+    }
+    
+    // Вывод дочерних элементов
+    virtual void paint_childs(uint16_t offsetX, uint16_t offsetY, gui_color_t background)
+    {
+        // Перенос
+        offsetX += left_get();
+        offsetY += top_get();
+        // Вывод
+        for (auto i = childs.head(); i != NULL; i = LIST_ITEM_NEXT(i))
+            i->holder.paint(offsetX, offsetY, background);
+    }
 public:
     // Событие вывод на экран
     virtual void paint(uint16_t offsetX, uint16_t offsetY, gui_color_t background)
     {
         // Базовый метод
-        gui_visual_t::paint(offsetX, offsetY, background);
-        // Перенос координат
-        offsetX += left_get();
-        offsetY += top_get();
-        // Вывод дочерних
-        for (auto i = childs.head(); i != NULL; i = LIST_ITEM_NEXT(i))
-            i->holder.paint(offsetX, offsetY, background);
+        gui_visual_sizeable_t::paint(offsetX, offsetY, background);
+        // Вывод дочерних элементов
+        paint_childs(offsetX, offsetY, background);
     }
     
     // Обновление состояния элемента
@@ -246,23 +310,13 @@ void gui_visual_t::top_set(uint16_t value)
 }
 
 // Класс базовой панели на границах дисплея
-class gui_edge_panel_t : protected gui_container_t
+class gui_edge_panel_t : public gui_container_t
 {
 protected:
-    // Локальные константы
-    enum
-    {
-        // Ширина панели
-        WIDTH = LCD_SIZE_WIDTH,
-    };
-    
-    // Получает высоту панели
-    virtual uint8_t height_get(void) const = 0;
-
     // Обработчик события вывода на экран
-    virtual void paint_handler(uint16_t x, uint16_t y, gui_color_t background)
+    virtual void paint_self(uint16_t x, uint16_t y, gui_color_t background)
     {
-        gfx_rect_solid(x, y, WIDTH, height_get(), gui_color_get(background));
+        gfx_rect_solid(x, y, width_get(), height_get(), gui_color_get(background));
     }
 public:
     // Вывод на экран
@@ -292,7 +346,7 @@ static class gui_action_panel_t : public gui_edge_panel_t
         bool pressed;
     protected:    
         // Обработчик события вывода на экран
-        virtual void paint_handler(uint16_t x, uint16_t y, gui_color_t pbackground)
+        virtual void paint_self(uint16_t x, uint16_t y, gui_color_t pbackground)
         {
             // Определяем цвет фона
             auto bk = gui_color_get(pressed ? GUI_COLOR_ACTION_BUTTON_BK_PRESSED  : background);
@@ -340,20 +394,7 @@ static class gui_action_panel_t : public gui_edge_panel_t
         // Dummy
         return back;
     }
-protected:
-    // Получает высоту панели
-    uint8_t height_get(void) const
-    {
-        return HEIGHT;
-    }
 public:
-    // Локальные константы
-    enum
-    {
-        // Высота панели
-        HEIGHT = 36,
-    };
-
     // Конструктор по умолчанию
     gui_action_panel_t(void) : 
         enter(IMAGE_BUTTON_ENTER, GUI_COLOR_ACTION_BUTTON_BK_ENTER),
@@ -362,6 +403,7 @@ public:
         back(IMAGE_BUTTON_BACK, GUI_COLOR_ACTION_BUTTON_BK_BACK)
     {
         // Позиционирование панели
+        height_set(36);
         top_set(LCD_SIZE_HEIGHT - height_get());
         // Позиционирование кнопок
             // X
@@ -399,7 +441,6 @@ public:
     }
 } gui_action_panel;
 
-
 // Панель статуса
 static class gui_status_panel_t : public gui_edge_panel_t
 {
@@ -410,7 +451,7 @@ static class gui_status_panel_t : public gui_edge_panel_t
         const char *text;
     protected:
         // Обработчик события вывода на экран
-        virtual void paint_handler(uint16_t x, uint16_t y, gui_color_t background)
+        virtual void paint_self(uint16_t x, uint16_t y, gui_color_t background)
         {
             // Ширина текста
             auto width = gfx_string_measure(text, FONT_HEADER_BOLD);
@@ -424,7 +465,7 @@ static class gui_status_panel_t : public gui_edge_panel_t
         form_name_t(void) : text(NULL)
         {
             // Позиционирование
-            left_set(WIDTH);
+            left_set(LCD_SIZE_WIDTH);
         }
         
         // Установка нового текста
@@ -439,37 +480,25 @@ static class gui_status_panel_t : public gui_edge_panel_t
         }
     } form_name;
 protected:
-    // Получает высоту панели
-    uint8_t height_get(void) const
-    {
-        return HEIGHT;
-    }
-
     // Обработчик события вывода на экран
-    virtual void paint_handler(uint16_t x, uint16_t y, gui_color_t background)
+    virtual void paint_self(uint16_t x, uint16_t y, gui_color_t background)
     {
         auto bk = gui_color_get(background);
         auto fk = gui_color_get(GUI_COLOR_STAUS_HEADER_FK);
         // Базовый метод
-        gui_edge_panel_t::paint_handler(x, y, background);
+        gui_edge_panel_t::paint_self(x, y, background);
         // Иконка
         gfx_image(IMAGE_STATUS_ICON, x + 1, y, fk, bk);
         // Заголовок приложения
-        gfx_string("ДОЗАТОР", FONT_HEADER_BOLD, x + HEIGHT + 3, y + 1, fk, bk);
+        gfx_string("ДОЗАТОР", FONT_HEADER_BOLD, x + height_get() + 3, y + 1, fk, bk);
     }
 public:
     // Конструктор по умолчанию
     gui_status_panel_t(void)
     {
+        height_set(24);
         add(form_name);
     }
-
-    // Локальные константы
-    enum
-    {
-        // Высота панели
-        HEIGHT = 24,
-    };
     
     // Установка текста имени текущей формы
     void form_name_set(const char *value)
@@ -485,7 +514,7 @@ class gui_control_t;
 typedef list_item_template_t<gui_control_t> gui_control_wrap_t;
 
 // Класс элемента управления принимающего фокус
-class gui_control_t : public gui_visual_t
+class gui_control_t : public gui_visual_sizeable_t
 {
     friend class gui_form_t;
     
@@ -519,49 +548,7 @@ public:
     // Соединение двух элементов для фокуса
     void connect(gui_control_t &to)
     {
-        neighbors.link(to.neighbors);
-    }
-};
-
-// Базовый класс элемента управления, имеющего размеры
-class gui_control_sizeable_t : public gui_control_t
-{
-    // Высота и ширина
-    uint16_t width, height;
-    
-protected:
-    // Конструктор по умолчанию
-    gui_control_sizeable_t(void) : width(0), height(0)
-    { }
-
-    // Получает ширину
-    uint16_t width_get(void) const
-    {
-        return width;
-    }
-    
-    // Получает высоту
-    uint16_t height_get(void) const
-    {
-        return height;
-    }
-public:
-    // Задает ширину
-    void width_set(uint16_t value)
-    {
-        if (width == value)
-            return;
-        width = value;
-        parent_refresh();
-    }
-    
-    // Задает высоту
-    void height_set(uint16_t value)
-    {
-        if (height == value)
-            return;
-        height = value;
-        parent_refresh();
+        to.neighbors.link(neighbors);
     }
 };
 
@@ -574,15 +561,6 @@ typedef list_item_template_t<gui_form_t> gui_form_wrap_t;
 class gui_form_t : protected gui_container_t
 {
     friend class gui_form_stack_t;
-    
-    // Локальные константы
-    enum
-    {
-        // Высота панели
-        HEIGHT = LCD_SIZE_HEIGHT - gui_status_panel_t::HEIGHT - gui_action_panel_t::HEIGHT,
-        // Ширина панели
-        WIDTH = LCD_SIZE_WIDTH,
-    };
     
     // Имя формы
     char const * const name;
@@ -616,7 +594,7 @@ class gui_form_t : protected gui_container_t
             case KEY_KIND_UP:
                 // Фокус вверх
                 {
-                    auto next = (gui_control_wrap_t *)focused->neighbors.next();
+                    auto next = (gui_control_wrap_t *)focused->neighbors.prev();
                     if (next != NULL)
                     {
                         focused_set(&next->holder);
@@ -627,7 +605,7 @@ class gui_form_t : protected gui_container_t
             case KEY_KIND_DOWN:
                 // Фокус вниз
                 {
-                    auto next = (gui_control_wrap_t *)focused->neighbors.prev();
+                    auto next = (gui_control_wrap_t *)focused->neighbors.next();
                     if (next != NULL)
                     {
                         focused_set(&next->holder);
@@ -640,10 +618,10 @@ class gui_form_t : protected gui_container_t
     }
 protected:
     // Обработчик события вывода на экран
-    virtual void paint_handler(uint16_t x, uint16_t y, gui_color_t background)
+    virtual void paint_self(uint16_t x, uint16_t y, gui_color_t background)
     {
-        gfx_rect_solid(x + 1, y + 1, WIDTH - 2, HEIGHT - 2, gui_color_get(background));
-        gfx_rect_frame(x, y, WIDTH, HEIGHT, gui_color_get(GUI_COLOR_FORM_FRAME_FK));
+        gfx_rect_solid(x + 1, y + 1, width_get() - 2, height_get() - 2, gui_color_get(background));
+        gfx_rect_frame(x, y, width_get(), height_get(), gui_color_get(GUI_COLOR_FORM_FRAME_FK));
     }
     
     // Установка фокуса новому элементу
@@ -667,7 +645,9 @@ public:
     {
         assert(name != NULL);
         // Позиционирование
-        top_set(gui_status_panel_t::HEIGHT);
+        auto top = gui_status_panel.height_get();
+        top_set(top);
+        height_set(LCD_SIZE_HEIGHT - top - gui_action_panel.height_get());
     }
 };
 
@@ -726,54 +706,8 @@ public:
     }
 } gui_form_stack;
 
-// Класс метки вывода знакового числа
-class gui_label_int_t : public gui_control_sizeable_t
-{
-    // Выводимое число
-    int32_t number;
-protected:
-    // Обработчик события вывода на экран
-    virtual void paint_handler(uint16_t x, uint16_t y, gui_color_t background)
-    {
-        auto bk = gui_color_get(background);
-        // Фон
-        gfx_rect_solid(x, y, width_get(), height_get(), bk);
-        // Текст
-        char buffer[16];
-        if (number > 0)
-            sprintf(buffer, "+%d", number);
-        else
-            sprintf(buffer, "%d", number);
-        auto font = FONT_NUMBER_BOLD;
-        auto width = gfx_string_measure(buffer, font);
-        gfx_string(buffer, font, x + width_get() / 2 - width / 2, y + height_get() / 2 - font_height_get(font) / 2, gui_color_get(GUI_COLOR_BUTTON_TEXT_FK), bk);
-    }
-    
-    // Обработчик события клавиши
-    virtual bool key_event(key_kind_t key)
-    {
-        return false;
-    }
-public:
-    // Конструктор по умолчанию
-    gui_label_int_t(void) : number(0)
-    {
-        width_set(LCD_SIZE_WIDTH);
-        height_set(font_height_get(FONT_NUMBER_BOLD));
-    }
-    
-    // Установка значения выводимого числа
-    void number_set(int32_t value)
-    {
-        if (number == value)
-            return;
-        number = value;
-        refresh();
-    }
-};
-
 // Базовый класс кнопки
-class gui_button_base_t : public gui_control_sizeable_t
+class gui_button_base_t : public gui_control_t
 {
     // Эффект вспышки при клике
     uint8_t flash;
@@ -792,7 +726,7 @@ protected:
     }
     
     // Обработчик события вывода на экран
-    virtual void paint_handler(uint16_t x, uint16_t y, gui_color_t background)
+    virtual void paint_self(uint16_t x, uint16_t y, gui_color_t background)
     {
         // Цвет фона
         auto bk = gui_color_get(flash > 0 ? 
@@ -840,16 +774,15 @@ public:
             click_event();
         }
         // Базовый метод
-        gui_control_sizeable_t::paint(offsetX, offsetY, background);
+        gui_control_t::paint(offsetX, offsetY, background);
     }
 };
 
 // Класс реализации кнопки по умолчанию
-class gui_button_t : public gui_button_base_t
+class gui_button_notify_t : public gui_button_base_t
 {
     // Обработчик клика
-    callback_proc_ptr handler;
-    
+    notify_proc_ptr handler;
 protected:
     // Обработчик событие клика
     virtual void click_event(void)
@@ -858,10 +791,155 @@ protected:
     }
 public:
     // Конструктор по умолчанию
-    gui_button_t(const char * _text, callback_proc_ptr _handler) 
+    gui_button_notify_t(const char * _text, notify_proc_ptr _handler) 
         : gui_button_base_t(_text), handler(_handler)
     {
         assert(handler != NULL);
+    }
+};
+
+// Класс ввода числа с фиксированной точкой
+class gui_number_t : public gui_control_t
+{
+    // Выводимое число
+    int32_t number;
+    // Выводимое число при вводе
+    int32_t number_input;
+    // Флаг, указывающий что происходит ввод
+    bool input;
+    
+    // Локальные константы
+    enum
+    {
+        // Количество дробных разрядов
+        FRACTION = 1000
+    };
+    
+protected:
+    // Обработчик события вывода на экран
+    virtual void paint_self(uint16_t x, uint16_t y, gui_color_t background)
+    {
+        // Цвет фона
+        auto bk = gui_color_get(focused_get() ? 
+                    (input ? 
+                        GUI_COLOR_BUTTON_BK_FOCUSED : 
+                        GUI_COLOR_BUTTON_BK_NORMAL) :
+                    background);
+        // Цвет границы
+        auto fk = gui_color_get(focused_get() ? 
+            GUI_COLOR_FOCUSED_FK : 
+            background);
+        // Граница
+        gfx_rect_frame_round(x, y, width_get(), height_get(), fk, gui_color_get(background));
+        // Фон
+        gfx_rect_solid(x, y, width_get(), height_get(), bk);
+        // Подготовка текста
+        char text[16];
+        auto temp = input ? number_input : number;
+        auto neg = temp < 0;
+        if (neg)
+            temp = -temp;
+        sprintf(text, "%s%d.%03d", neg ? "-" : "", temp / FRACTION, temp % FRACTION); 
+        // Вывод текста
+        auto font = FONT_NUMBER_BOLD;
+        auto width = gfx_string_measure(text, font);
+        gfx_string(text, 
+            font, x + width_get() / 2 - width / 2, y + height_get() / 2 - font_height_get(font) / 2, 
+            gui_color_get(GUI_COLOR_BUTTON_TEXT_FK), bk);
+    }
+    
+    // Обработчик события клавиши
+    virtual bool key_event(key_kind_t key)
+    {
+        // Режим ввода
+        if (input)
+        {
+            switch (key)
+            {
+                case KEY_KIND_ENTER:
+                    number = number_input;
+                    input = false;
+                    // TODO: оповещение
+                    break;
+                case KEY_KIND_UP:
+                    if (number_input / FRACTION < 99)
+                        number_input += 1;
+                    break;
+                case KEY_KIND_DOWN:
+                    if (number_input > 0)
+                        number_input -= 1;
+                    break;
+                case KEY_KIND_BACK:
+                    input = false;
+                    break;
+            }
+            refresh();
+            return true;
+        }
+        // Режим фокуса
+        if (key != KEY_KIND_ENTER)
+            return false;
+        number_input = number;
+        input = true;
+        refresh();
+        return true;
+    }
+public:
+    // Конструктор по умолчанию
+    gui_number_t(void) : number(0), input(false)
+    {
+        // Позиционирование по умолчанию
+        height_set(54);
+    }
+    
+    // Получает текущее число
+    int32_t number_get(void) const
+    {
+        return number;
+    }
+    
+    // Задает текущее число
+    void number_set(int32_t value)
+    {
+        if (number == value)
+            return;
+        number = value;
+        refresh();
+    }
+};
+
+// Класс декоративной рамки
+class gui_bevel_t : public gui_container_t
+{
+protected:
+    // Вывод дочерних элементов
+    virtual void paint_childs(uint16_t offsetX, uint16_t offsetY, gui_color_t background)
+    {
+        // Переопределяем фон
+        gui_container_t::paint_childs(offsetX, offsetY, GUI_COLOR_BEVEL_BK);
+    }
+
+    // Обработчик события вывода на экран
+    virtual void paint_self(uint16_t x, uint16_t y, gui_color_t background)
+    {
+        // Граница
+        gfx_rect_frame_round(x, y, width_get(), height_get(), gui_color_get(GUI_COLOR_BEVEL_FK), gui_color_get(background));
+        // Фон
+        gfx_rect_solid(x, y, width_get(), height_get(), gui_color_get(GUI_COLOR_BEVEL_BK));
+    }
+    
+    // Обработчик события клавиши
+    virtual bool key_event(key_kind_t key)
+    {
+        return false;
+    }
+public:
+    // Конструктор по умолчанию
+    gui_bevel_t(void)
+    {
+        // Позиционирование по умолчанию
+        left_set(18);
+        width_set(204);
     }
 };
 
@@ -869,20 +947,19 @@ public:
 static class gui_form_main_t : public gui_form_t
 {
     // Кнопка входа в дозатор
-    gui_button_t dispencer;
+    gui_button_notify_t dispencer;
     // Кнопка входа в калибровку
-    gui_button_t calibration;
+    gui_button_notify_t calibration;
     
     // Вход в дозатор
     static void dispencer_enter(void);
-    // Вход в отсыпатель
-    static void dummy(void)
-    { }
+    // Вход в калибровку
+    static void calib_enter(void);
 public:
     // Конструктор по умолчанию
     gui_form_main_t(void) : gui_form_t("ГЛАВНАЯ"), 
        dispencer("НАСЫПАТЬ", dispencer_enter),
-       calibration("КАЛИБРОВКА", dummy)
+       calibration("КАЛИБРОВКА", calib_enter)
     {
         // Добавление кнопок
         add(dispencer);
@@ -895,55 +972,128 @@ public:
     }
 } gui_form_main;
 
+// Форма калибровки
+static class gui_form_calib_t : public gui_form_t
+{
+    // Кнопка калибровки в нуле
+    gui_button_notify_t zero_button;
+    // Кнопка калибровки в точке
+    gui_button_notify_t point_button;
+    // Рамка
+    gui_bevel_t point_bevel;
+    // Ввод значения точки
+    gui_number_t point_value;
+    
+    // Клик по кнопке калибровки в точке
+    static void point_click(void);
+public:
+    // Конструктор по умолчанию
+    gui_form_calib_t(void) : gui_form_t("КАЛИБРОВКА"),
+        zero_button("В НУЛЕ", weight_calib_zero),
+        point_button("В ТОЧКЕ", point_click)
+    {
+        zero_button.height_set(54);
+        point_button.height_set(54);
+        
+        zero_button.top_set(17);
+        
+        point_bevel.top_set(88);
+        point_bevel.height_set(156);
+        
+        point_button.top_set(16);
+        point_button.left_set(18);
+        
+        point_value.top_set(86);
+        point_value.left_set(18);
+        point_value.width_set(168);
+        
+        add(zero_button);
+        add(point_bevel);
+        point_bevel.add(point_button);
+        point_bevel.add(point_value);
+        
+        // Фоккус
+        zero_button.connect(point_button);
+        point_button.connect(point_value);
+        focused_set(&zero_button);
+    }
+} gui_form_calib;
+
+void gui_form_calib_t::point_click(void)
+{
+    weight_calib_point(gui_form_calib.point_value.number_get());
+}
+
+void gui_form_main_t::calib_enter(void)
+{
+    gui_form_stack.add(gui_form_calib);
+}
+
 // Форма дозатора
 static class gui_form_dispencer_t : public gui_form_t
 {
+    // Кнопка задания тары
+    gui_button_notify_t tare_button;
+    // Ввод значения точки
+    gui_number_t weight_value;
+    // Процедура обработчика собтыия нового значения веса
+    static void weight_handler_cb(int32_t current);
 public:
-    gui_label_int_t label;
+    // Обработчик нового значения веса
+    weight_event_handler_t weight_handler;
+    
     // Конструктор по умолчанию
-    gui_form_dispencer_t(void) : gui_form_t("НАСЫПАТЬ")
+    gui_form_dispencer_t(void) 
+        : gui_form_t("ДОЗАТОР"), 
+          weight_handler(weight_handler_cb),
+          tare_button("ТАРА", weight_tare)
     {
-        label.top_set(30);
-        add(label);
+        // Кнопка тары
+        tare_button.top_set(74);
+        // Поле вывода веса
+        weight_value.top_set(10);
+        weight_value.width_set(LCD_SIZE_WIDTH);
+        // Добавление элементов
+        add(weight_value);
+        add(tare_button);
+        // Фокус
+        focused_set(&tare_button);
     }
 } gui_form_dispencer;
 
-// TODO: test!
-
-#include "adc.h"
-
-static timer_callback_t adc_timer([](void)
-{
-    gui_form_dispencer.label.number_set(adc_read() / 100);
-});
-
-// TODO: /test!
-
-// Вход в дозатор
 void gui_form_main_t::dispencer_enter(void)
-{ 
+{
     gui_form_stack.add(gui_form_dispencer);
 }
 
+void gui_form_dispencer_t::weight_handler_cb(int32_t current)
+{
+    gui_form_dispencer.weight_value.number_set(current);
+}
+
 // Таймер перерисовки интерфейса
-static timer_callback_t gui_paint_timer([](void)
+static timer_notify_t gui_paint_timer([](void)
 {
     gui_action_panel.repaint();
     gui_status_panel.repaint();
     gui_form_stack.repaint();
 });
 
+// Обработчик смены состояния клавиш
+static key_event_handler_t gui_key_event([](const key_event_args_t &key)
+{
+    gui_form_stack.key_event(key.kind, key.state);
+    gui_action_panel.key_event(key.kind, key.state);
+});
+
 void gui_init(void)
 {
-    adc_timer.start_us(100, TIMER_FLAG_LOOP);
     // Добавляем главную форму
     gui_form_stack.add(gui_form_main);
     // 25 кадров в секунду
     gui_paint_timer.start_hz(25, TIMER_FLAG_LOOP);
-}
-
-void gui_key_event(key_kind_t key, key_state_t state)
-{
-    gui_form_stack.key_event(key, state);
-    gui_action_panel.key_event(key, state);
+    // Добавляемя в список обработчиков событий клавиш
+    key_event_list.add(gui_key_event);
+    // Подписываемся на получение текущего веса
+    weight_event_list.add(gui_form_dispencer.weight_handler);
 }
