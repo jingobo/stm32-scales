@@ -35,18 +35,21 @@ struct gfx_color_t
     }
 };
 
-// Буферы цвета для вывода изображений
-static __no_init gfx_color_t gfx_foreground, gfx_background;
-
-// Внутренний буфер общего назначения
-static __no_init lcd_color_t gfx_buffer[GFX_BUFFER_SIZE];
+// Локальные переменные
+static __no_init struct
+{
+    // Буферы цвета для вывода изображений
+    gfx_color_t foreground, background;
+    // Внутренний буфер общего назначения
+    lcd_color_t buffer[GFX_BUFFER_SIZE];
+} gfx;
 
 // Заполнение цветом внутреннего буфера
 static void gfx_buffer_fill(lcd_color_t color, uint16_t count, uint16_t offset = 0)
 {
     count += offset;
     for (uint16_t i = offset; i < count; i++)
-        gfx_buffer[i] = color;
+        gfx.buffer[i] = color;
 }
 
 void gfx_rect_frame(uint16_t x, uint16_t y, uint16_t width, uint16_t height, lcd_color_t foreground)
@@ -55,16 +58,16 @@ void gfx_rect_frame(uint16_t x, uint16_t y, uint16_t width, uint16_t height, lcd
     gfx_buffer_fill(foreground, MAX(width, height));
     // Верх
     lcd_area(x, y, width, 1);
-    lcd_out(gfx_buffer, width);
+    lcd_out(gfx.buffer, width);
     // Право
     lcd_area(x + width - 1, y, 1, height);
-    lcd_out(gfx_buffer, height);
+    lcd_out(gfx.buffer, height);
     // Низ
     lcd_area(x, y + height - 1, width, 1);
-    lcd_out(gfx_buffer, width);
+    lcd_out(gfx.buffer, width);
     // Лево
     lcd_area(x, y, 1, height);
-    lcd_out(gfx_buffer, height);
+    lcd_out(gfx.buffer, height);
 }
 
 void gfx_rect_solid(uint16_t x, uint16_t y, uint16_t width, uint16_t height, lcd_color_t background)
@@ -74,7 +77,7 @@ void gfx_rect_solid(uint16_t x, uint16_t y, uint16_t width, uint16_t height, lcd
     // Вывод по сторкам
     lcd_area(x, y, width, height);
     for (; height > 0; height--)
-        lcd_out(gfx_buffer, width);
+        lcd_out(gfx.buffer, width);
 }
 
 void gfx_rect_frame_round(uint16_t x, uint16_t y, uint16_t width, uint16_t height, lcd_color_t foreground, lcd_color_t background)
@@ -108,9 +111,9 @@ static void gfx_image_rle(const uint8_t *data, uint16_t x, uint16_t y, uint16_t 
     // Подготовка компонентов цвета
     const gfx_color_t dx =
     {
-        gfx_foreground.r - gfx_background.r,
-        gfx_foreground.g - gfx_background.g,
-        gfx_foreground.b - gfx_background.b,
+        gfx.foreground.r - gfx.background.r,
+        gfx.foreground.g - gfx.background.g,
+        gfx.foreground.b - gfx.background.b,
     };
     // Подготовка области
     lcd_area(x, y, width, height);
@@ -124,9 +127,9 @@ static void gfx_image_rle(const uint8_t *data, uint16_t x, uint16_t y, uint16_t 
         // Рассчет цвета
         const gfx_color_t t =
         {
-            dx.r * grad / LCD_COLOR_COMP_MAX + gfx_background.r,
-            dx.g * grad / LCD_COLOR_COMP_MAX + gfx_background.g,
-            dx.b * grad / LCD_COLOR_COMP_MAX + gfx_background.b,
+            dx.r * grad / LCD_COLOR_COMP_MAX + gfx.background.r,
+            dx.g * grad / LCD_COLOR_COMP_MAX + gfx.background.g,
+            dx.b * grad / LCD_COLOR_COMP_MAX + gfx.background.b,
         };
         const lcd_color_t color = t.encode();
         
@@ -145,21 +148,21 @@ static void gfx_image_rle(const uint8_t *data, uint16_t x, uint16_t y, uint16_t 
             // Передача
             if (buffer_offset < GFX_BUFFER_SIZE)
                 continue;
-            lcd_out(gfx_buffer, buffer_offset);
+            lcd_out(gfx.buffer, buffer_offset);
             buffer_offset = 0;
         }
     }
     // Вывод не переданной части буфера
     if (buffer_offset > 0)
-        lcd_out(gfx_buffer, buffer_offset);
+        lcd_out(gfx.buffer, buffer_offset);
 }
 
 void gfx_image(const uint8_t *image, uint16_t x, uint16_t y, lcd_color_t foreground, lcd_color_t background)
 {
     assert(image != NULL);
     // Конвертирование цветов
-    gfx_foreground.decode(foreground);
-    gfx_background.decode(background);
+    gfx.foreground.decode(foreground);
+    gfx.background.decode(background);
     // Вывод
     gfx_image_rle(image + 2, x, y, image[0], image[1]);
 }
@@ -212,8 +215,8 @@ uint16_t gfx_string(const char *string, const uint8_t *font, uint16_t x, uint16_
 {
     assert(string != NULL);
     // Конвертирование цветов
-    gfx_foreground.decode(foreground);
-    gfx_background.decode(background);
+    gfx.foreground.decode(foreground);
+    gfx.background.decode(background);
     // Вывод
     return gfx_string_internal(string, font, x, y, true);
 }
