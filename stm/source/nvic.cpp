@@ -104,6 +104,7 @@ static void nvic_interrupt_bus(void)
 extern "C" void __iar_program_start(void);
 
 // Модули в которых есть прерывания
+#include "adc.h"
 #include "key.h"
 #include "mcu.h"
 #include "timer.h"
@@ -145,7 +146,7 @@ extern "C" __root const nvic_vtbl_t __vector_table @ NVIC_SECTION_VTBL =
         nvic_interrupt_dummy,                   // EXTI Line1
         nvic_interrupt_dummy,                   // EXTI Line2
         nvic_interrupt_dummy,                   // EXTI Line3
-        nvic_interrupt_dummy,                   // EXTI Line4
+        adc_interrupt_exti,                     // EXTI Line4
         nvic_interrupt_dummy,                   // DMA1 Channel 1
         nvic_interrupt_dummy,                   // DMA1 Channel 2
         nvic_interrupt_dummy,                   // DMA1 Channel 3
@@ -164,7 +165,7 @@ extern "C" __root const nvic_vtbl_t __vector_table @ NVIC_SECTION_VTBL =
         nvic_interrupt_dummy,                   // TIM1 Trigger / TIM17
         nvic_interrupt_dummy,                   // TIM1 CC
         nvic_interrupt_dummy,                   // TIM2
-        timer_base_t::interrupt_htim,           // TIM3
+        timer_t::interrupt_htim,                // TIM3
         nvic_interrupt_dummy,                   // TIM4
         nvic_interrupt_dummy,                   // I2C1 Event
         nvic_interrupt_dummy,                   // I2C1 Error
