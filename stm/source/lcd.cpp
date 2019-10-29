@@ -149,7 +149,7 @@ void lcd_init(void)
     
     // SOFTWARE RESET
     lcd_command(LCD_COMMAND_SWRESET);
-    mcu_delay_ms(100);
+    mcu_delay_ms(50);
 
     // POWER CONTROL A
     lcd_command_va(LCD_COMMAND_POWERA, 5, 0x39, 0x2C, 0x00, 0x34, 0x02);
