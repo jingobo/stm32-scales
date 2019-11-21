@@ -767,11 +767,11 @@
                 </option>
                 <option>
                     <name>IlinkIcfOverride</name>
-                    <state>0</state>
+                    <state>1</state>
                 </option>
                 <option>
                     <name>IlinkIcfFile</name>
-                    <state>$TOOLKIT_DIR$\config\linker\ST\stm32l476xG.icf</state>
+                    <state>$PROJ_DIR$\linker\scales.icf</state>
                 </option>
                 <option>
                     <name>IlinkIcfFileSlave</name>
@@ -1073,6 +1073,9 @@
             <name>$PROJ_DIR$\source\event.cpp</name>
         </file>
         <file>
+            <name>$PROJ_DIR$\source\flow.cpp</name>
+        </file>
+        <file>
             <name>$PROJ_DIR$\source\gfx.cpp</name>
         </file>
         <file>
@@ -1097,6 +1100,9 @@
             <name>$PROJ_DIR$\source\adc.cpp</name>
         </file>
         <file>
+            <name>$PROJ_DIR$\source\flash.cpp</name>
+        </file>
+        <file>
             <name>$PROJ_DIR$\source\io.cpp</name>
         </file>
         <file>
@@ -1110,6 +1116,9 @@
         </file>
         <file>
             <name>$PROJ_DIR$\source\spi.cpp</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\source\uart.cpp</name>
         </file>
     </group>
     <group>

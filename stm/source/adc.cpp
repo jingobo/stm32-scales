@@ -1,7 +1,11 @@
-﻿#include "io.h"
+﻿// Включение режима передачи значений АЦП по UART
+#define ADC_SEND_TO_FLOW
+
+#include "io.h"
 #include "adc.h"
 #include "mcu.h"
 #include "nvic.h"
+#include "flow.h"
 #include "event.h"
 #include "timer.h"
 
@@ -53,6 +57,9 @@ static event_notify_t adc_value_ready([](void)
     // Конвертирование в 32-бит знаковое
     if (u32 & 0x800000)
         u32 |= 0xFF000000;
+    #ifdef ADC_SEND_TO_FLOW
+        flow_value = (float32_t)s32;
+    #endif
     // Вызов события
     adc_event_list(s32);
     // Сброс сторожевого таймера

@@ -1204,6 +1204,9 @@
             <name>$PROJ_DIR$\source\event.cpp</name>
         </file>
         <file>
+            <name>$PROJ_DIR$\source\flow.cpp</name>
+        </file>
+        <file>
             <name>$PROJ_DIR$\source\gfx.cpp</name>
         </file>
         <file>
@@ -1228,6 +1231,9 @@
             <name>$PROJ_DIR$\source\adc.cpp</name>
         </file>
         <file>
+            <name>$PROJ_DIR$\source\flash.cpp</name>
+        </file>
+        <file>
             <name>$PROJ_DIR$\source\io.cpp</name>
         </file>
         <file>
@@ -1241,6 +1247,9 @@
         </file>
         <file>
             <name>$PROJ_DIR$\source\spi.cpp</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\source\uart.cpp</name>
         </file>
     </group>
     <group>
