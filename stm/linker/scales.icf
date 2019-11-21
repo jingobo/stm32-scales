@@ -1,0 +1,25 @@
+define memory mem with size = 4G;
+define symbol __iar_maximum_atexit_calls = 1;
+
+/* RAM */
+
+define region iram = mem:[from 0x20000000 size 96K];
+
+initialize by copy { rw };
+
+/* Stack */
+define block CSTACK with alignment = 8, size = 0x2000 { };
+
+place in iram { rw, block CSTACK };
+
+/* Flash */
+
+define region irom = mem:[from 0x08000000 size 1022K];
+
+place at start of irom { ro section .intvec };
+place in irom { ro };
+
+/* Storage */
+define region storage = mem:[from 0x080FF800 size 2K];
+
+place at start of storage { ro section .storage  };
