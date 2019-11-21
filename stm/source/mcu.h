@@ -54,8 +54,6 @@ bool mcu_pool_ms(mcu_pool_handler_ptr pool, uint32_t delay = 1);
 
 // Обновение участка бит регистра
 void mcu_reg_update_32(volatile uint32_t *reg, uint32_t value_bits, uint32_t valid_bits);
-// Установка указателей каналу DMA (переферия <-> память)
-void mcu_dma_channel_setup_pm(DMA_Channel_TypeDef *channel, volatile uint32_t &reg, const void *mem);
 
 // Обработчик прерывания системного таймера
 void mcu_interrupt_systick(void);

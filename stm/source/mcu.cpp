@@ -99,18 +99,6 @@ void mcu_reg_update_32(volatile uint32_t *reg, uint32_t value_bits, uint32_t val
     *reg = buffer;
 }
 
-void mcu_dma_channel_setup_pm(DMA_Channel_TypeDef *channel, volatile uint32_t &reg, const void *mem)
-{
-    // Проверка аргументов
-    assert(channel != NULL && mem != NULL);
-    // Инициализация канала
-    channel->CCR = 0;                                                           // Channel reset
-    WARNING_SUPPRESS(Pa039)
-        channel->CPAR = (uint32_t)&reg;                                         // Peripheral address
-        channel->CMAR = (uint32_t)mem;                                          // Memory address
-    WARNING_DEFAULT(Pa039)
-}
-
 void mcu_mco_output(mcu_mco_source_t source)
 {
     RCC->CFGR &= ~RCC_CFGR_MCOSEL;

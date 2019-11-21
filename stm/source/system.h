@@ -9,6 +9,8 @@
    spi - DMA2 (channel 2), SPI3
    timer - TIM3,
    key - ETTI[5..9]
+   adc - EXTI4
+   uart - USART2
 */
 
 // Частота ядра при старте
