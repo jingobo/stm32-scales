@@ -2,7 +2,14 @@
 #include "flash.h"
 #include "weight.h"
 
-static const __root uint32_t weight_test_flash @ FLASH_RW_SECTION = 0x11223344;
+// Локальные настройки модуля
+static const struct
+{
+    // Смещение нуля
+    int32_t offset;
+    // Пропорциональность
+    int32_t factor;
+} WEIGHT_CALIB @ FLASH_RW_SECTION = { 0, 1 };
 
 // Список обработчиков изменения веса
 weight_event_handler_t::list_t weight_event_list;
@@ -191,10 +198,6 @@ static class weight_filter_converter_t : public weight_filter_base_t
         ACCURACY = 100,
     };
     
-    // Смещение нуля
-    int32_t offset;
-    // Пропорциональность
-    int32_t factor;
     // Тара
     int32_t tare;
     // Предыдущее введенное сырое значение
@@ -203,7 +206,7 @@ static class weight_filter_converter_t : public weight_filter_base_t
     // Рассчет веса без тары
     int32_t calculate(int32_t raw) const
     {
-        return (raw - offset) * factor / ACCURACY;
+        return (raw - WEIGHT_CALIB.offset) * WEIGHT_CALIB.factor / ACCURACY;
     }
     
     // Обновление веса
@@ -222,19 +225,21 @@ protected:
 public:
     // Конструктор по умолчанию
     weight_filter_converter_t(void)
-        : offset(0), factor(ACCURACY), tare(0), last_raw(0)
+        : tare(0), last_raw(0)
     { }
 
     // Калибровка в нуле
     void zero(void)
     {
-        refresh(offset = last_raw);
+        flash_write(&WEIGHT_CALIB.offset, &last_raw, sizeof(last_raw));
+        refresh(last_raw);
     }
     
     // Калибровка в точке
     void point(int32_t weight)
     {
-        factor =  (weight * ACCURACY) / (last_raw - offset);
+        int32_t f = (weight * ACCURACY) / (last_raw - WEIGHT_CALIB.offset);
+        flash_write(&WEIGHT_CALIB.factor, &f, sizeof(f));
         refresh(last_raw);
     }
     
@@ -258,22 +263,18 @@ static adc_event_handler_t weight_adc_event([](int32_t raw)
 {
     // На предупреждение не реагируем
     if (raw != ADC_VALUE_WATCHDOG)
-        weight_filter_chain.head()->input(raw);
+        weight_filter_chain.head()->input(raw >> 3);
 });
 
 void weight_init(void)
 {
     // Сбор цепочки фильтров
-    weight_filter_low_pass.link(weight_filter_chain);
+    //weight_filter_low_pass.link(weight_filter_chain);
     weight_filter_median.link(weight_filter_chain);
     //weight_filter_threshold.link(weight_filter_chain);
     weight_filter_converter.link(weight_filter_chain);
     // Подписываемся на событе получения значения от АЦП
     adc_event_list.add(weight_adc_event);
-    
-    uint32_t test = 0x12334545;
-    
-    flash_write(&weight_test_flash, &test, sizeof(test));
 }
 
 void weight_calib_zero(void)
