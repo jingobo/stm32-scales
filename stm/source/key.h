@@ -16,6 +16,9 @@ enum key_kind_t
     KEY_KIND_BACK,
 };
 
+// Количество клавиш
+#define KEY_COUNT       ((int)KEY_KIND_BACK + 1)
+
 // Состяоние клавиши
 enum key_state_t
 {
@@ -32,6 +35,8 @@ struct key_event_args_t
     key_kind_t kind;
     // Состояние клавиши
     key_state_t state;
+    // Шаг нажатия [1..10]
+    uint8_t step;
 };
 
 // Тип обработчика события клавиш

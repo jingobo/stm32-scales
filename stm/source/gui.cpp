@@ -424,10 +424,10 @@ public:
     }
     
     // Событие смены состояния клавиши
-    void key_event(key_kind_t key, key_state_t state)
+    void key_event(const key_event_args_t &key)
     {
-        auto &button = button_from_key(key);
-        switch (state)
+        auto &button = button_from_key(key.kind);
+        switch (key.state)
         {
             case KEY_STATE_RELEASED:
                 button.pressed_set(false);
@@ -543,7 +543,7 @@ protected:
     }
     
     // Обработчик события клавиши
-    virtual bool key_event(key_kind_t key) = 0;
+    virtual bool key_event(const key_event_args_t &key) = 0;
 public:
     // Соединение двух элементов для фокуса
     void connect(gui_control_t &to)
@@ -582,14 +582,14 @@ class gui_form_t : protected gui_container_t
     }
     
     // Обработчик события клавиши
-    bool key_event(key_kind_t key)
+    bool key_event(const key_event_args_t &key)
     {
         if (focused == NULL)
             return false;
         if (focused->key_event(key))
             return true;
         // Событие не обработано
-        switch (key)
+        switch (key.kind)
         {
             case KEY_KIND_UP:
                 // Фокус вверх
@@ -669,10 +669,10 @@ static class gui_form_stack_t
     }
 public:
     // Событие смены состояния клавиши
-    void key_event(key_kind_t key, key_state_t state)
+    void key_event(const key_event_args_t &key)
     {
         // Обрабатываем только нажатия
-        if (state != KEY_STATE_PRESSED)
+        if (key.state != KEY_STATE_PRESSED)
             return;
         auto form = forms.last();
         assert(form != NULL);
@@ -680,7 +680,7 @@ public:
         if (form->holder.key_event(key))
             return;
         // Обработка перехода не прендыдущую форму
-        if (key != KEY_KIND_BACK || forms.count() <= 1)
+        if (key.kind != KEY_KIND_BACK || forms.count() <= 1)
             return;
         // Удаляем текущую форму
         form->unlink();
@@ -751,9 +751,9 @@ protected:
     }
     
     // Обработчик события клавиши
-    virtual bool key_event(key_kind_t key)
+    virtual bool key_event(const key_event_args_t &key)
     {
-        if (key != KEY_KIND_ENTER)
+        if (key.kind != KEY_KIND_ENTER)
             return false;
         // Вспышка
         flash = 5;
@@ -812,9 +812,12 @@ class gui_number_t : public gui_control_t
     enum
     {
         // Количество дробных разрядов
-        FRACTION = 1000
+        FRACTION = 1000,
+        MAXIMUM = (int32_t)(99.9999999 * FRACTION),
     };
     
+    // Массив размера инкремена по шагу нажатия
+    static const uint16_t INCREMENT_BY_STEP[];
 protected:
     // Обработчик события вывода на экран
     virtual void paint_self(uint16_t x, uint16_t y, gui_color_t background)
@@ -849,12 +852,13 @@ protected:
     }
     
     // Обработчик события клавиши
-    virtual bool key_event(key_kind_t key)
+    virtual bool key_event(const key_event_args_t &key)
     {
         // Режим ввода
         if (input)
         {
-            switch (key)
+            auto step = INCREMENT_BY_STEP[key.step - 1];
+            switch (key.kind)
             {
                 case KEY_KIND_ENTER:
                     number = number_input;
@@ -862,12 +866,16 @@ protected:
                     // TODO: оповещение
                     break;
                 case KEY_KIND_UP:
-                    if (number_input / FRACTION < 99)
-                        number_input += 1;
+                    if (number_input + step < MAXIMUM)
+                        number_input += step;
+                    else
+                        number_input = MAXIMUM;
                     break;
                 case KEY_KIND_DOWN:
-                    if (number_input > 0)
-                        number_input -= 1;
+                    if (number_input > step)
+                        number_input -= step;
+                    else
+                        number_input = 0;
                     break;
                 case KEY_KIND_BACK:
                     input = false;
@@ -877,7 +885,7 @@ protected:
             return true;
         }
         // Режим фокуса
-        if (key != KEY_KIND_ENTER)
+        if (key.kind != KEY_KIND_ENTER)
             return false;
         number_input = number;
         input = true;
@@ -908,6 +916,20 @@ public:
     }
 };
 
+const uint16_t gui_number_t::INCREMENT_BY_STEP[] =
+{
+    1,
+    1,
+    1,
+    2,
+    5,
+    7,
+    10,
+    25,
+    50,
+    100,
+};
+
 // Класс декоративной рамки
 class gui_bevel_t : public gui_container_t
 {
@@ -929,7 +951,7 @@ protected:
     }
     
     // Обработчик события клавиши
-    virtual bool key_event(key_kind_t key)
+    virtual bool key_event(const key_event_args_t &key)
     {
         return false;
     }
@@ -1082,8 +1104,8 @@ static timer_notify_t gui_paint_timer([](void)
 // Обработчик смены состояния клавиш
 static key_event_handler_t gui_key_event([](const key_event_args_t &key)
 {
-    gui_form_stack.key_event(key.kind, key.state);
-    gui_action_panel.key_event(key.kind, key.state);
+    gui_form_stack.key_event(key);
+    gui_action_panel.key_event(key);
 });
 
 void gui_init(void)

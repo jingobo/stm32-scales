@@ -40,8 +40,8 @@ class key_data_t
     key_state_t state;
     // Таймер
     key_timer_t timer;
-    // Задержка при залипании в мС
-    uint32_t press_delay;
+    // Шаг в нажатии кнопки
+    uint8_t press_step;
     // Используемый порт вывода
     struct
     {
@@ -66,21 +66,32 @@ class key_data_t
         {
             kind,
             state,
+            press_step,
         };
         key_event_list(args);
+    }
+    
+    // Рестарт таймера на текущий шаг нажатия
+    void press_step_delay(void)
+    {
+        assert(press_step > 0);
+        // Расчет задержки
+        uint32_t delay = 1000;
+        for (auto i = 0; i < press_step; i++)
+            delay = delay * 4 / 5;
+        // Запуск таймера задержки
+        timer.start(delay);
     }
     
     // Обработчик таймера
     void timer_execute(void)
     {
         // Обработка залипания
-        if (press_delay > 0)
+        if (press_step > 0)
         {
-            // Сокращение задержки (формула подобрана субъективно)
-            if (press_delay > 10)
-                press_delay = press_delay * 3 / 5;
-            // Рестарт таймера
-            timer.start(press_delay);
+            if (press_step < 10)
+                press_step++;                
+            press_step_delay();
             // Передача события
             call_event();
             return;
@@ -90,15 +101,18 @@ class key_data_t
         if (state == state_new)
             return;
         state = state_new;
-        // Передача события
-        call_event();
         // Если кнопки нажата - залипание
         if (state == KEY_STATE_PRESSED)
-            timer.start(press_delay = 1000);
+        {
+            press_step = 1;
+            press_step_delay();
+        }
+        // Передача события
+        call_event();
     }
 public:
     // Конструктор по умолчанию
-    key_data_t(const GPIO_TypeDef *io_port, uint8_t io_index, key_kind_t _kind) : kind(_kind), timer(*this)
+    key_data_t(const GPIO_TypeDef *io_port, uint8_t io_index, key_kind_t _kind) : kind(_kind), timer(*this), press_step(0)
     {
         assert(io_port != NULL);
         assert(io_index < 16);
@@ -114,19 +128,21 @@ public:
         if (!(EXTI->PR1 & IO_MASK(io.index)))                                   // Check interrupt pending flag
             return;
         EXTI->PR1 |= IO_MASK(io.index);                                         // Clear interrupt pending flag
-        // Сброс задержки
-        press_delay = 0;
+        // Сброс шага
+        press_step = 0;
         // Запуск таймера (на антидребезг 3 мС)
         timer.start(3);
     }
 };
 
 // Используемые кнопки
-static key_data_t
-    key_enter(IO_BTN_KEY1_PORT, IO_BTN_KEY1, KEY_KIND_ENTER),
-    key_up(IO_BTN_KEY2_PORT, IO_BTN_KEY2, KEY_KIND_UP),
-    key_down(IO_BTN_KEY3_PORT, IO_BTN_KEY3, KEY_KIND_DOWN),
-    key_back(IO_BTN_KEY4_PORT, IO_BTN_KEY4, KEY_KIND_BACK);
+static key_data_t key_data[KEY_COUNT] =
+{
+    key_data_t(IO_BTN_KEY1_PORT, IO_BTN_KEY1, KEY_KIND_ENTER),
+    key_data_t(IO_BTN_KEY2_PORT, IO_BTN_KEY2, KEY_KIND_UP),
+    key_data_t(IO_BTN_KEY3_PORT, IO_BTN_KEY3, KEY_KIND_DOWN),
+    key_data_t(IO_BTN_KEY4_PORT, IO_BTN_KEY4, KEY_KIND_BACK),
+};
 
 void key_timer_t::execute(void)
 {
@@ -148,8 +164,6 @@ void key_init(void)
 IRQ_ROUTINE
 void key_interrupt_exti(void)
 {
-    key_enter.process();
-    key_up.process();
-    key_down.process();
-    key_back.process();
+    for (auto i = 0; i < KEY_COUNT; i++)
+        key_data[i].process();
 }
