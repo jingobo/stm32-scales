@@ -130,8 +130,8 @@ public:
         EXTI->PR1 |= IO_MASK(io.index);                                         // Clear interrupt pending flag
         // Сброс шага
         press_step = 0;
-        // Запуск таймера (на антидребезг 3 мС)
-        timer.start(3);
+        // Запуск таймера (на антидребезг 25 мС)
+        timer.start(25);
     }
 };
 
@@ -146,7 +146,9 @@ static key_data_t key_data[KEY_COUNT] =
 
 void key_timer_t::execute(void)
 {
-    owner.timer_execute();
+    IRQ_CTX_DISABLE();
+        owner.timer_execute();
+    IRQ_CTX_ENABLE();
 }
 
 void key_init(void)
