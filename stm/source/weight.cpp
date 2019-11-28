@@ -40,7 +40,7 @@ static class weight_filter_median_t : public weight_filter_base_t
     enum
     {
         // Размер буфера фильтра
-        SIZE = 80,
+        SIZE = 50,
     };
     
     // Буфер скользящего среднего
@@ -93,7 +93,7 @@ static class weight_filter_low_pass_t : public weight_filter_base_t
         // Множитель отражающий точность рассчета при конвертировании
         ACCURACY = 100,
         
-        K = 10,
+        K = 30,
     };
     // Предыдущее значение фильтра
     int32_t last;
@@ -101,7 +101,7 @@ protected:
     // Обработка фильтра
     virtual int32_t process(int32_t value)
     {
-        return last = last * ACCURACY / K + value * K / ACCURACY;
+        return last = last * (ACCURACY - K) / ACCURACY + value * K / ACCURACY;
     }
 public:
     // Конструктор по умолчанию
@@ -116,7 +116,7 @@ static class weight_filter_threshold_t : public weight_filter_base_t
     enum
     {
         // Размер буфера фильтра
-        SIZE = 16,
+        SIZE = 80,
     };
     
     // Накопительный буфер сэмплов
@@ -159,11 +159,9 @@ protected:
             }
             sum /= SIZE;
             auto deviation = (int32_t)sqrt((double)sum) * 2;
-            if (deviation < 130)
-                deviation = 130;
             // Конечный порог
             deviation += max - min;
-            if (window > deviation)
+            if (window > deviation && deviation > 0)
             {
                 window = deviation;
                 // TODO: по количеству определять готовность
@@ -202,6 +200,8 @@ static class weight_filter_converter_t : public weight_filter_base_t
     int32_t tare;
     // Предыдущее введенное сырое значение
     int32_t last_raw;
+    // Предыдущее переданное обработчикам значение веса
+    int32_t last_send;
     
     // Рассчет веса без тары
     int32_t calculate(int32_t raw) const
@@ -210,11 +210,12 @@ static class weight_filter_converter_t : public weight_filter_base_t
     }
     
     // Обновление веса
-    int32_t refresh(int32_t raw) const
+    int32_t refresh(int32_t raw)
     {
         auto result = calculate(raw) - tare;
-        weight_event_list(result);
-        return result;
+        if (abs(last_send - result) > 1)
+            weight_event_list(last_send = result);
+        return last_send;
     }
 protected:
     // Обработка фильтра
@@ -225,7 +226,7 @@ protected:
 public:
     // Конструктор по умолчанию
     weight_filter_converter_t(void)
-        : tare(0), last_raw(0)
+        : tare(0), last_raw(0), last_send(0)
     { }
 
     // Калибровка в нуле
@@ -263,14 +264,14 @@ static adc_event_handler_t weight_adc_event([](int32_t raw)
 {
     // На предупреждение не реагируем
     if (raw != ADC_VALUE_WATCHDOG)
-        weight_filter_chain.head()->input(raw >> 3);
+        weight_filter_chain.head()->input(raw >> 4);
 });
 
 void weight_init(void)
 {
     // Сбор цепочки фильтров
-    //weight_filter_low_pass.link(weight_filter_chain);
     weight_filter_median.link(weight_filter_chain);
+    weight_filter_low_pass.link(weight_filter_chain);
     //weight_filter_threshold.link(weight_filter_chain);
     weight_filter_converter.link(weight_filter_chain);
     // Подписываемся на событе получения значения от АЦП
