@@ -35,8 +35,8 @@ struct key_event_args_t
     key_kind_t kind;
     // Состояние клавиши
     key_state_t state;
-    // Шаг нажатия [1..10]
-    uint8_t step;
+    // Шаг нажатия
+    uint32_t step;
 };
 
 // Тип обработчика события клавиш

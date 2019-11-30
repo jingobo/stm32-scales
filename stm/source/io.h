@@ -90,6 +90,9 @@
 
 // --- Порт A --- //
 
+#define IO_MTR_PWM                      0
+#define IO_MTR_PWM_PORT                 GPIOA
+
 #define IO_DBG_TX                       2
 #define IO_DBG_TX_PORT                  GPIOA
 

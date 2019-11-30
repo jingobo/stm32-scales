@@ -2,6 +2,7 @@
 #include "gui.h"
 #include "gfx.h"
 #include "key.h"
+#include "pwm.h"
 #include "list.h"
 #include "font.h"
 #include "image.h"
@@ -36,6 +37,9 @@ enum gui_color_t
 
     // Заливка при фокусе (для разных элементов)
     GUI_COLOR_FOCUSED_FK,
+    
+    // Текст надписи
+    GUI_COLOR_LABEL_TEXT_FK,
     
     // Текст кнопки
     GUI_COLOR_BUTTON_TEXT_FK,
@@ -90,6 +94,9 @@ static const gui_theme_t GUI_THEMES[2] =
         
         // GUI_COLOR_FOCUSED_FK
         GUI_THEME_COLOR_WHITE_ORANGE,
+        
+        // GUI_COLOR_LABEL_TEXT_FK
+        LCD_COLOR_MAKE(48, 48, 48),
         
         // GUI_COLOR_BUTTON_TEXT_FK,
         LCD_COLOR_MAKE(48, 48, 48),
@@ -168,6 +175,13 @@ public:
     // Задает координату по Y
     void top_set(uint16_t value);
     
+    // Задает положение
+    void location_set(uint16_t left, uint16_t top)
+    {
+        left_set(left);
+        top_set(top);
+    }
+    
     // Событие вывод на экран
     virtual void paint(uint16_t offsetX, uint16_t offsetY, gui_color_t background)
     {
@@ -231,6 +245,14 @@ public:
             return;
         height = value;
         parent_refresh();
+    }
+    
+    // Задает положение и размер
+    void bounds_set(uint16_t left, uint16_t top, uint16_t width, uint16_t height)
+    {
+        location_set(left, top);
+        width_set(width);
+        height_set(height);
     }
 };
 
@@ -406,16 +428,10 @@ public:
         height_set(36);
         top_set(LCD_SIZE_HEIGHT - height_get());
         // Позиционирование кнопок
-            // X
-        enter.left_set(10); 
-        up.left_set(70);    
-        down.left_set(130);  
-        back.left_set(190);
-            // Y
-        enter.top_set(6);
-        up.top_set(6);
-        down.top_set(6);
-        back.top_set(6);
+        enter.location_set(10, 6);
+        up.location_set(70, 6);
+        down.location_set(130, 6);
+        back.location_set(190, 6);
         // Добавление кнопок в дочерние
         add(enter);
         add(up);
@@ -581,8 +597,9 @@ class gui_form_t : protected gui_container_t
         gui_container_t::refresh();
     }
     
+protected:
     // Обработчик события клавиши
-    bool key_event(const key_event_args_t &key)
+    virtual bool key_event(const key_event_args_t &key)
     {
         if (focused == NULL)
             return false;
@@ -616,7 +633,7 @@ class gui_form_t : protected gui_container_t
         }
         return false;
     }
-protected:
+    
     // Обработчик события вывода на экран
     virtual void paint_self(uint16_t x, uint16_t y, gui_color_t background)
     {
@@ -718,11 +735,7 @@ protected:
     gui_button_base_t(const char * _text) : text(_text), flash(0)
     {
         assert(text != NULL);
-        // Позиционирование по умолчанию
-        left_set(36);
-        top_set(36);
-        width_set(168);
-        height_set(76);
+        bounds_set(36, 36, 168, 76);
     }
     
     // Обработчик события вывода на экран
@@ -798,6 +811,76 @@ public:
     }
 };
 
+// Класс ввода надписи
+class gui_label_t : public gui_control_t
+{
+    // Шрифт
+    const uint8_t * const font;
+    // Текст
+    char text[32];
+protected:
+    // Обработчик события вывода на экран
+    virtual void paint_self(uint16_t x, uint16_t y, gui_color_t background)
+    {
+        // Цвет фона и текста
+        auto bk = gui_color_get(background);
+        auto fk = gui_color_get(GUI_COLOR_LABEL_TEXT_FK);
+        // Фон
+        gfx_rect_solid(x, y, width_get(), height_get(), bk);
+        // Вывод текста
+        auto width = gfx_string_measure(text, font);
+        gfx_string(text, 
+            font, x + width_get() / 2 - width / 2, y + height_get() / 2 - font_height_get(font) / 2, 
+            fk, bk);
+    }
+    
+    // Обработчик события клавиши
+    virtual bool key_event(const key_event_args_t &key)
+    {
+        return false;
+    }
+public:
+    // Конструктор по умолчанию
+    gui_label_t(const uint8_t *font) : font(font)
+    {
+        *text = '\0';
+    }
+    
+    // Задает отображаемый текст
+    void text_set(const char *source)
+    {
+        assert(source != NULL);
+        if (strcmp(source, text) == 0)
+            return;
+        strncpy(text, source, ARRAY_SIZE(text));
+        refresh();
+    }
+};
+
+// Массив размера инкремена по шагу нажатия
+static const uint16_t GUI_NUMBER_INCREMENT_BY_STEP[] =
+{
+    1,
+    1,
+    1,
+    1,
+    1,
+    // 5
+    5,
+    5,
+    5,
+    5,
+    5,
+    // 30
+    10,
+    10,
+    10,
+    10,
+    10,
+    10,
+    10,
+};
+
 // Класс ввода числа с фиксированной точкой
 class gui_number_t : public gui_control_t
 {
@@ -815,9 +898,6 @@ class gui_number_t : public gui_control_t
         FRACTION = 1000,
         MAXIMUM = (int32_t)(99.9999999 * FRACTION),
     };
-    
-    // Массив размера инкремена по шагу нажатия
-    static const uint16_t INCREMENT_BY_STEP[];
 protected:
     // Обработчик события вывода на экран
     virtual void paint_self(uint16_t x, uint16_t y, gui_color_t background)
@@ -857,7 +937,10 @@ protected:
         // Режим ввода
         if (input)
         {
-            auto step = INCREMENT_BY_STEP[key.step - 1];
+            auto index = key.step - 1;
+            auto step = 100;
+            if (index <= ARRAY_SIZE(GUI_NUMBER_INCREMENT_BY_STEP))
+                step = GUI_NUMBER_INCREMENT_BY_STEP[index];
             switch (key.kind)
             {
                 case KEY_KIND_ENTER:
@@ -916,20 +999,6 @@ public:
     }
 };
 
-const uint16_t gui_number_t::INCREMENT_BY_STEP[] =
-{
-    1,
-    1,
-    1,
-    2,
-    5,
-    7,
-    10,
-    25,
-    50,
-    100,
-};
-
 // Класс декоративной рамки
 class gui_bevel_t : public gui_container_t
 {
@@ -959,7 +1028,6 @@ public:
     // Конструктор по умолчанию
     gui_bevel_t(void)
     {
-        // Позиционирование по умолчанию
         left_set(18);
         width_set(204);
     }
@@ -972,24 +1040,33 @@ static class gui_form_main_t : public gui_form_t
     gui_button_notify_t dispencer;
     // Кнопка входа в калибровку
     gui_button_notify_t calibration;
+    // Кнопка входа в тест мотора
+    gui_button_notify_t motor_test;
     
     // Вход в дозатор
     static void dispencer_enter(void);
     // Вход в калибровку
     static void calib_enter(void);
+    // Вход в тест мотора
+    static void motor_test_enter(void);
 public:
     // Конструктор по умолчанию
     gui_form_main_t(void) : gui_form_t("ГЛАВНАЯ"), 
        dispencer("НАСЫПАТЬ", dispencer_enter),
-       calibration("КАЛИБРОВКА", calib_enter)
+       calibration("КАЛИБРОВКА", calib_enter),
+       motor_test("ТЕСТ МОТОРА", motor_test_enter)
     {
         // Добавление кнопок
         add(dispencer);
         add(calibration);
+        add(motor_test);
         // Позиционирование
-        calibration.top_set(148);
+        dispencer.bounds_set(36, 24, 168, 54);
+        calibration.bounds_set(36, 102, 168, 54);
+        motor_test.bounds_set(36, 180, 168, 54);
         // Фоккус
         dispencer.connect(calibration);
+        calibration.connect(motor_test);
         focused_set(&dispencer);
     }
 } gui_form_main;
@@ -1066,7 +1143,7 @@ public:
     
     // Конструктор по умолчанию
     gui_form_dispencer_t(void) 
-        : gui_form_t("ДОЗАТОР"), 
+        : gui_form_t("НАСЫПАТЬ"), 
           weight_handler(weight_handler_cb),
           tare_button("ТАРА", weight_tare)
     {
@@ -1091,6 +1168,66 @@ void gui_form_main_t::dispencer_enter(void)
 void gui_form_dispencer_t::weight_handler_cb(int32_t current)
 {
     gui_form_dispencer.weight_value.number_set(current);
+}
+
+// Форма теста мотора
+static class gui_form_motor_test_t : public gui_form_t
+{
+    // Надпись заголовка
+    gui_label_t header;
+    // Надпись скорости
+    gui_label_t speed;
+    
+    // Задание скорости вращения
+    void speed_set(uint8_t value)
+    {
+        pwm_width_set(value);
+        char temp[32];
+        sprintf(temp, "%d%%", value);
+        speed.text_set(temp);
+    }
+    
+protected:
+    // Обработчик события клавиши
+    virtual bool key_event(const key_event_args_t &key)
+    {
+        if (gui_form_t::key_event(key))
+            return true;
+        if (key.state != KEY_STATE_PRESSED)
+            return false;
+        auto current = pwm_width_get();
+        switch (key.kind)
+        {
+            case KEY_KIND_UP:
+                if (current < PWM_WIDTH_MAX)
+                    speed_set(current + 1);
+                return true;
+            case KEY_KIND_DOWN:
+                if (current > 0)
+                    speed_set(current - 1);
+                return true;
+        }
+        return false;
+    }
+public:
+    // Конструктор по умолчанию
+    gui_form_motor_test_t(void) : gui_form_t("ТЕСТ МОТОРА"), 
+        header(FONT_HEADER_BOLD), speed(FONT_NUMBER_BOLD)
+    {
+        // Заголовок
+        header.text_set("СКОРОСТЬ ВРАЩЕНИЯ");
+        header.bounds_set(0, 36, LCD_SIZE_WIDTH, 22);
+        add(header);
+        // Значение
+        speed_set(0);
+        speed.bounds_set(0, 60, LCD_SIZE_WIDTH, 53);
+        add(speed);
+    }
+} gui_form_motor_test;
+
+void gui_form_main_t::motor_test_enter(void)
+{
+    gui_form_stack.add(gui_form_motor_test);
 }
 
 // Таймер перерисовки интерфейса

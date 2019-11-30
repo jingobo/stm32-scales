@@ -7,6 +7,7 @@
 /* Используемая переферия:
    mcu - RCC, SYSTICK
    spi - DMA2 (channel 2), SPI3
+   pwm - TIM2
    timer - TIM3,
    key - ETTI[5..9]
    adc - EXTI4

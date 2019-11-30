@@ -1115,6 +1115,9 @@
             <name>$PROJ_DIR$\source\nvic.cpp</name>
         </file>
         <file>
+            <name>$PROJ_DIR$\source\pwm.cpp</name>
+        </file>
+        <file>
             <name>$PROJ_DIR$\source\spi.cpp</name>
         </file>
         <file>

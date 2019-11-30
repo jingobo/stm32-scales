@@ -50,7 +50,7 @@ void io_init(void)
                     RCC_AHB2ENR_GPIOHEN;                                        // PH clock enable
     // Порт A
     IO_LOAD(A);
-        IO_INIT_IN_PD(0);
+        IO_INIT_AF_HS(IO_MTR_PWM, IO_IPULL_DOWN);
         IO_INIT_IN_PD(1);
         IO_INIT_AF_LS(IO_DBG_TX, IO_IPULL_NONE);
         IO_INIT_AF_LS(IO_DBG_RX, IO_IPULL_UP);

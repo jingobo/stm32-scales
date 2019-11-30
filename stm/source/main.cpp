@@ -4,6 +4,7 @@
 #include "lcd.h"
 #include "key.h"
 #include "gui.h"
+#include "pwm.h"
 #include "flow.h"
 #include "nvic.h"
 #include "uart.h"
@@ -18,6 +19,7 @@ __task __noreturn void main(void)
     nvic_init();
     mcu_init();
     io_init();
+    pwm_init();
     uart_init();
     timer_init();
     flow_init();

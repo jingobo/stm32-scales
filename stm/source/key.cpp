@@ -41,7 +41,7 @@ class key_data_t
     // Таймер
     key_timer_t timer;
     // Шаг в нажатии кнопки
-    uint8_t press_step;
+    uint32_t press_step;
     // Используемый порт вывода
     struct
     {
@@ -76,9 +76,19 @@ class key_data_t
     {
         assert(press_step > 0);
         // Расчет задержки
-        uint32_t delay = 1000;
-        for (auto i = 0; i < press_step; i++)
-            delay = delay * 4 / 5;
+        uint32_t delay = 100;
+        switch (press_step)
+        {
+            case 1:
+                delay = 1000;
+                break;
+            case 2:
+            case 3:
+            case 4:
+            case 5:
+                delay = 500;
+                break;
+        }
         // Запуск таймера задержки
         timer.start(delay);
     }
@@ -89,8 +99,7 @@ class key_data_t
         // Обработка залипания
         if (press_step > 0)
         {
-            if (press_step < 10)
-                press_step++;                
+            press_step++;
             press_step_delay();
             // Передача события
             call_event();
@@ -146,9 +155,7 @@ static key_data_t key_data[KEY_COUNT] =
 
 void key_timer_t::execute(void)
 {
-    IRQ_CTX_DISABLE();
-        owner.timer_execute();
-    IRQ_CTX_ENABLE();
+    owner.timer_execute();
 }
 
 void key_init(void)
