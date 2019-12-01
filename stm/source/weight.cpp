@@ -9,7 +9,7 @@ static const struct
     int32_t offset;
     // Пропорциональность
     int32_t factor;
-} WEIGHT_CALIB @ FLASH_RW_SECTION = { 0, 1 };
+} WEIGHT_CALIB @ FLASH_RW_SECTION = { 97543, 125 };
 
 // Список обработчиков изменения веса
 weight_event_handler_t::list_t weight_event_list;
@@ -25,13 +25,25 @@ public:
     void input(int32_t value)
     {
         // Обработка
-        auto last = process(value);
+        value = process(value);
         // Передача следующему фильтру
         auto nf = (weight_filter_base_t *)next();
         if (nf != NULL)
-            nf->input(last);
+            nf->input(value);
     }
 };
+
+// Фильтр оповещения о смене веса
+static class weight_filter_notify_t : public weight_filter_base_t
+{
+protected:
+    // Обработка фильтра
+    virtual int32_t process(int32_t value)
+    {
+        weight_event_list(value);
+        return value;
+    }
+} weight_filter_notify;
 
 // Медианный фильтр
 static class weight_filter_median_t : public weight_filter_base_t
@@ -81,7 +93,6 @@ public:
     {
         memset(window, 0, sizeof(window));
     }
-
 } weight_filter_median;
 
 // Фильтр низких частот
@@ -91,8 +102,8 @@ static class weight_filter_low_pass_t : public weight_filter_base_t
     enum
     {
         // Множитель отражающий точность рассчета при конвертировании
-        ACCURACY = 100,
-        
+        KMAX = 100,
+        // Коофициент передачи
         K = 30,
     };
     // Предыдущее значение фильтра
@@ -101,7 +112,7 @@ protected:
     // Обработка фильтра
     virtual int32_t process(int32_t value)
     {
-        return last = last * (ACCURACY - K) / ACCURACY + value * K / ACCURACY;
+        return last = last * (KMAX - K) / KMAX + value * K / KMAX;
     }
 public:
     // Конструктор по умолчанию
@@ -115,75 +126,58 @@ static class weight_filter_threshold_t : public weight_filter_base_t
     // Константы
     enum
     {
-        // Размер буфера фильтра
-        SIZE = 80,
+        // Порог
+        THRESHOLD = 5,
     };
     
-    // Накопительный буфер сэмплов
-    int32_t buffer[SIZE];
-    // Индекс записи в накопительный буфер
-    uint32_t index;
-    // Текущее окно
-    int32_t window;
-    // Текущее значение фильтра
-    int32_t filtered;
+    // Переданное значение дальше
+    int32_t sended;
+    // Акамулятор усреднения
+    int32_t accum;
+    // Количество усреднений
+    int32_t count;
+    // Флаг сброса
+    bool reseting;
+    
+    // Сброс акамулятора усреднения
+    void accum_clear(bool res)
+    {
+        accum = count = 0;
+        reseting = res;
+    }
 protected:
     // Обработка фильтра
     virtual int32_t process(int32_t value)
     {
-        // Ввод
-        buffer[index++] = value;
-        if (index > SIZE)
+        // Усреднение
+        count++;
+        int64_t temp = accum;
+        if ((temp += value) >= INT32_MAX)
         {
-            index = 0;
-            // Минимум, маскимум, сумма
-            int32_t min = INT32_MAX, max = INT32_MIN;
-            int64_t sum = 0;
-            for (auto i = 0; i < SIZE; i++)
-            {
-                auto sample = buffer[i];
-                if (min > sample)
-                    min = sample;
-                if (max < sample)
-                    max = sample;
-                sum += sample;
-            }
-            // Среднее
-            auto avg = (int32_t)(sum / SIZE);
-            // Среднеквадратичное отклонение
-            sum = 0;
-            for (auto i = 0; i < SIZE; i++)
-            {
-                auto temp = buffer[i] - avg;
-                sum =+ temp * temp;
-            }
-            sum /= SIZE;
-            auto deviation = (int32_t)sqrt((double)sum) * 2;
-            // Конечный порог
-            deviation += max - min;
-            if (window > deviation && deviation > 0)
-            {
-                window = deviation;
-                // TODO: по количеству определять готовность
-            }
+            temp /= count;
+            count = 1;
         }
-        // Если окно не готово
-        if (window == INT32_MAX)
-            return filtered;
-        
-        // Обработка порогов окна
-        if (value > filtered + window)
-            filtered = value - window;
-        else if (value < filtered - window)
-            filtered = value + window;
- 
-        return filtered;
+        accum = (int32_t)temp;
+        // Проверка порога
+        if (reseting || abs(value - sended) > THRESHOLD)
+        {
+            sended = accum / count;
+            accum_clear(false);
+        }
+        return sended;
     }
 public:
     // Конструктор по умолчанию
-    weight_filter_threshold_t(void) 
-        : index(0), window(INT32_MAX), filtered(0)
-    { }
+    weight_filter_threshold_t(void)
+    {
+        reset();
+    }
+    
+    // Сброс фильтра
+    void reset(void)
+    {
+        accum_clear(true);
+    }
 } weight_filter_threshold;
 
 // Конвертер веса из сырого значения
@@ -200,8 +194,6 @@ static class weight_filter_converter_t : public weight_filter_base_t
     int32_t tare;
     // Предыдущее введенное сырое значение
     int32_t last_raw;
-    // Предыдущее переданное обработчикам значение веса
-    int32_t last_send;
     
     // Рассчет веса без тары
     int32_t calculate(int32_t raw) const
@@ -210,30 +202,26 @@ static class weight_filter_converter_t : public weight_filter_base_t
     }
     
     // Обновление веса
-    int32_t refresh(int32_t raw)
+    void refresh(void)
     {
-        auto result = calculate(raw) - tare;
-        if (abs(last_send - result) > 1)
-            weight_event_list(last_send = result);
-        return last_send;
+        input(last_raw);
     }
 protected:
     // Обработка фильтра
     virtual int32_t process(int32_t value)
     {
-        return refresh(last_raw = value);
+        return calculate(last_raw = value) - tare;
     }
 public:
     // Конструктор по умолчанию
-    weight_filter_converter_t(void)
-        : tare(0), last_raw(0), last_send(0)
+    weight_filter_converter_t(void) : tare(0), last_raw(0)
     { }
 
     // Калибровка в нуле
     void zero(void)
     {
         flash_write(&WEIGHT_CALIB.offset, &last_raw, sizeof(last_raw));
-        refresh(last_raw);
+        refresh();
     }
     
     // Калибровка в точке
@@ -241,7 +229,7 @@ public:
     {
         int32_t f = (weight * ACCURACY) / (last_raw - WEIGHT_CALIB.offset);
         flash_write(&WEIGHT_CALIB.factor, &f, sizeof(f));
-        refresh(last_raw);
+        refresh();
     }
     
     // Задание тары
@@ -251,8 +239,7 @@ public:
         if (tare == weight)
             return;
         tare = weight;
-        // Пересчет
-        refresh(last_raw);
+        refresh();
     }
 } weight_filter_converter;
 
@@ -272,23 +259,28 @@ void weight_init(void)
     // Сбор цепочки фильтров
     weight_filter_median.link(weight_filter_chain);
     weight_filter_low_pass.link(weight_filter_chain);
-    //weight_filter_threshold.link(weight_filter_chain);
     weight_filter_converter.link(weight_filter_chain);
+    weight_filter_threshold.link(weight_filter_chain);
+    // Обязательно последним в цепочке
+    weight_filter_notify.link(weight_filter_chain);
     // Подписываемся на событе получения значения от АЦП
     adc_event_list.add(weight_adc_event);
 }
 
 void weight_calib_zero(void)
 {
+    weight_filter_threshold.reset();
     weight_filter_converter.zero();
 }
 
 void weight_calib_point(int32_t value)
 {
+    weight_filter_threshold.reset();
     weight_filter_converter.point(value);
 }
 
 void weight_tare(void)
 {
+    weight_filter_threshold.reset();
     weight_filter_converter.tare_set();
 }
