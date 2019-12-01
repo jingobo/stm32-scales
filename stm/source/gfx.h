@@ -3,6 +3,9 @@
 
 #include "lcd.h"
 
+// Линии
+void gfx_line_horz(uint16_t x, uint16_t y, uint16_t width, lcd_color_t foreground);
+void gfx_line_vert(uint16_t x, uint16_t y, uint16_t height, lcd_color_t foreground);
 // Прямоугольник
 void gfx_rect_frame(uint16_t x, uint16_t y, uint16_t width, uint16_t height, lcd_color_t foreground);
 void gfx_rect_solid(uint16_t x, uint16_t y, uint16_t width, uint16_t height, lcd_color_t background);

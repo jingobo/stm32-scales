@@ -52,22 +52,34 @@ static void gfx_buffer_fill(lcd_color_t color, uint16_t count, uint16_t offset =
         gfx.buffer[i] = color;
 }
 
-void gfx_rect_frame(uint16_t x, uint16_t y, uint16_t width, uint16_t height, lcd_color_t foreground)
+void gfx_line_horz(uint16_t x, uint16_t y, uint16_t width, lcd_color_t foreground)
 {
     // Заполнение буфера цветом
-    gfx_buffer_fill(foreground, MAX(width, height));
-    // Верх
+    gfx_buffer_fill(foreground, width);
+    // Вывод
     lcd_area(x, y, width, 1);
     lcd_out(gfx.buffer, width);
-    // Право
-    lcd_area(x + width - 1, y, 1, height);
-    lcd_out(gfx.buffer, height);
-    // Низ
-    lcd_area(x, y + height - 1, width, 1);
-    lcd_out(gfx.buffer, width);
-    // Лево
+}
+
+void gfx_line_vert(uint16_t x, uint16_t y, uint16_t height, lcd_color_t foreground)
+{
+    // Заполнение буфера цветом
+    gfx_buffer_fill(foreground, height);
+    // Вывод
     lcd_area(x, y, 1, height);
     lcd_out(gfx.buffer, height);
+}
+
+void gfx_rect_frame(uint16_t x, uint16_t y, uint16_t width, uint16_t height, lcd_color_t foreground)
+{
+    // Верх
+    gfx_line_horz(x, y, width, foreground);
+    // Право
+    gfx_line_vert(x + width - 1, y, height, foreground);
+    // Низ
+    gfx_line_horz(x, y + height - 1, width, foreground);
+    // Лево
+    gfx_line_vert(x, y, height, foreground);
 }
 
 void gfx_rect_solid(uint16_t x, uint16_t y, uint16_t width, uint16_t height, lcd_color_t background)
