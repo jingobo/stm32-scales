@@ -860,25 +860,12 @@ public:
 // Массив размера инкремена по шагу нажатия
 static const uint16_t GUI_NUMBER_INCREMENT_BY_STEP[] =
 {
-    1,
-    1,
-    1,
-    1,
-    1,
+    1, 1, 1, 1, 1,
     // 5
-    5,
-    5,
-    5,
-    5,
-    5,
+    5, 5, 5, 5, 5,
     // 30
-    10,
-    10,
-    10,
-    10,
-    10,
-    10,
-    10,
+    10, 10, 10, 10,
+    10, 10, 10,
 };
 
 // Класс ввода числа с фиксированной точкой
@@ -1173,6 +1160,8 @@ void gui_form_dispencer_t::weight_handler_cb(int32_t current)
 // Форма теста мотора
 static class gui_form_motor_test_t : public gui_form_t
 {
+    // Рамка
+    gui_bevel_t bevel;
     // Надпись заголовка
     gui_label_t header;
     // Надпись скорости
@@ -1188,6 +1177,15 @@ static class gui_form_motor_test_t : public gui_form_t
     }
     
 protected:
+    // Обработчик события вывода на экран
+    virtual void paint_self(uint16_t x, uint16_t y, gui_color_t background)
+    {
+        // Базовый метод
+        gui_form_t::paint_self(x, y, background);
+        // Вывод картинки мотора
+        gfx_image(IMAGE_MISC_MOTOR, x + 56, y + 10, gui_color_get(GUI_COLOR_FORM_FRAME_FK), gui_color_get(background));
+    }
+    
     // Обработчик события клавиши
     virtual bool key_event(const key_event_args_t &key)
     {
@@ -1214,14 +1212,17 @@ public:
     gui_form_motor_test_t(void) : gui_form_t("ТЕСТ МОТОРА"), 
         header(FONT_HEADER_BOLD), speed(FONT_NUMBER_BOLD)
     {
+        // Рамка
+        bevel.bounds_set(36, 148, 168, 76);
+        add(bevel);
         // Заголовок
         header.text_set("СКОРОСТЬ ВРАЩЕНИЯ");
-        header.bounds_set(0, 36, LCD_SIZE_WIDTH, 22);
-        add(header);
+        header.bounds_set(0, 0, 168, 22);
+        bevel.add(header);
         // Значение
         speed_set(0);
-        speed.bounds_set(0, 60, LCD_SIZE_WIDTH, 53);
-        add(speed);
+        speed.bounds_set(0, 22, 168, 53);
+        bevel.add(speed);
     }
 } gui_form_motor_test;
 
