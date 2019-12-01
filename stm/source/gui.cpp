@@ -5,6 +5,7 @@
 #include "pwm.h"
 #include "list.h"
 #include "font.h"
+#include "flash.h"
 #include "image.h"
 #include "timer.h"
 #include "weight.h"
@@ -62,12 +63,38 @@ enum gui_color_t
 // Цветовая тема 
 typedef lcd_color_t gui_theme_t[GUI_COLOR_COUNT];
 
-#define GUI_THEME_COLOR_WHITE_ORANGE    LCD_COLOR_MAKE(209, 156, 0)
+// Перечисление видов тем
+enum gui_theme_kind_t
+{
+    // Светлая
+    GUI_THEME_KIND_LIGHT,
+    // Темная
+    GUI_THEME_KIND_DARK,
+};
+
+// Количество видов тем
+#define GUI_THEME_KIND_COUNT    ((int)GUI_THEME_KIND_DARK + 1)
+
+// Локальные настройки модуля
+static const struct
+{
+    gui_theme_kind_t theme;
+} GUI_SETTINGS @ FLASH_RW_SECTION = { GUI_THEME_KIND_LIGHT };
+
+// --- Светлая тема --- //
+
+#define GUI_THEME_COLOR_LIGHT_SELECT        LCD_COLOR_MAKE(209, 156, 0)
+#define GUI_THEME_COLOR_LIGHT_TEXTFK        LCD_COLOR_MAKE(48, 48, 48)
+
+// --- Темная тема --- //
+
+#define GUI_THEME_COLOR_DARK_SELECT         LCD_COLOR_MAKE(238, 10, 246)
+#define GUI_THEME_COLOR_DARK_TEXTFK         LCD_COLOR_MAKE(200, 200, 200)
 
 // Цветовые схемы
-static const gui_theme_t GUI_THEMES[2] =
+static const gui_theme_t GUI_THEMES[GUI_THEME_KIND_COUNT] =
 {
-    // Default
+    // Light
     {
         // GUI_COLOR_FORM_BK
         LCD_COLOR_MAKE(175, 175, 175),
@@ -82,24 +109,24 @@ static const gui_theme_t GUI_THEMES[2] =
         LCD_COLOR_MAKE(110, 110, 110),
         
         // GUI_COLOR_ACTION_BUTTON_FK
-        LCD_COLOR_MAKE(48, 48, 48),
+        GUI_THEME_COLOR_LIGHT_TEXTFK,
         // GUI_COLOR_ACTION_BUTTON_BK_NORMAL
         LCD_COLOR_MAKE(128, 128, 128),
         // GUI_COLOR_ACTION_BUTTON_BK_PRESSED
-        GUI_THEME_COLOR_WHITE_ORANGE,
+        GUI_THEME_COLOR_LIGHT_SELECT,
         // GUI_COLOR_ACTION_BUTTON_BK_ENTER
         LCD_COLOR_MAKE(50, 147, 111),
         // GUI_COLOR_ACTION_BUTTON_BK_BACK
         LCD_COLOR_MAKE(232, 63, 111),
         
         // GUI_COLOR_FOCUSED_FK
-        GUI_THEME_COLOR_WHITE_ORANGE,
+        GUI_THEME_COLOR_LIGHT_SELECT,
         
         // GUI_COLOR_LABEL_TEXT_FK
-        LCD_COLOR_MAKE(48, 48, 48),
+        GUI_THEME_COLOR_LIGHT_TEXTFK,
         
         // GUI_COLOR_BUTTON_TEXT_FK,
-        LCD_COLOR_MAKE(48, 48, 48),
+        GUI_THEME_COLOR_LIGHT_TEXTFK,
         // GUI_COLOR_BUTTON_FRAME_FK,
         LCD_COLOR_MAKE(80, 80, 80),
         // GUI_COLOR_BUTTON_BK_NORMAL,
@@ -112,12 +139,58 @@ static const gui_theme_t GUI_THEMES[2] =
         // GUI_COLOR_BEVEL_BK,
         LCD_COLOR_MAKE(150, 150, 150),
     },
+    
+    // Dark
+    {
+        // GUI_COLOR_FORM_BK
+        LCD_COLOR_MAKE(10, 10, 10),
+        // GUI_COLOR_FORM_FRAME_FK
+        LCD_COLOR_MAKE(60, 60, 60),
+        // GUI_COLOR_EDGE_PANEL_BK
+        LCD_COLOR_MAKE(30, 30, 30),
+        
+        // GUI_COLOR_STAUS_HEADER_FK
+        LCD_COLOR_MAKE(180, 106, 0),
+        // GUI_COLOR_STAUS_FORM_NAME_FK
+        LCD_COLOR_MAKE(180, 180, 180),
+        
+        // GUI_COLOR_ACTION_BUTTON_FK
+        GUI_THEME_COLOR_DARK_TEXTFK,
+        // GUI_COLOR_ACTION_BUTTON_BK_NORMAL
+        LCD_COLOR_MAKE(70, 70, 100),
+        // GUI_COLOR_ACTION_BUTTON_BK_PRESSED
+        GUI_THEME_COLOR_DARK_SELECT,
+        // GUI_COLOR_ACTION_BUTTON_BK_ENTER
+        LCD_COLOR_MAKE(10, 130, 10),
+        // GUI_COLOR_ACTION_BUTTON_BK_BACK
+        LCD_COLOR_MAKE(255, 10, 10),
+        
+        // GUI_COLOR_FOCUSED_FK
+        GUI_THEME_COLOR_DARK_SELECT,
+        
+        // GUI_COLOR_LABEL_TEXT_FK
+        GUI_THEME_COLOR_DARK_TEXTFK,
+        
+        // GUI_COLOR_BUTTON_TEXT_FK,
+        GUI_THEME_COLOR_DARK_TEXTFK,
+        // GUI_COLOR_BUTTON_FRAME_FK,
+        LCD_COLOR_MAKE(80, 80, 80),
+        // GUI_COLOR_BUTTON_BK_NORMAL,
+        LCD_COLOR_MAKE(40, 40, 40),
+        // GUI_COLOR_BUTTON_BK_FOCUSED,
+        LCD_COLOR_MAKE(70, 70, 70),
+
+        // GUI_COLOR_BEVEL_FK,
+        LCD_COLOR_MAKE(0, 0x3F, 0x6E),
+        // GUI_COLOR_BEVEL_BK,
+        LCD_COLOR_MAKE(0, 0x1F, 0x4E),
+    },
 };
 
 // ПОлучает реальный цвет по номеру темы
 static lcd_color_t gui_color_get(gui_color_t color)
 {
-    return GUI_THEMES[0][color];
+    return GUI_THEMES[GUI_SETTINGS.theme][color];
 }
 
 // Предварительное объявление
@@ -637,8 +710,14 @@ protected:
     // Обработчик события вывода на экран
     virtual void paint_self(uint16_t x, uint16_t y, gui_color_t background)
     {
-        gfx_rect_solid(x + 1, y + 1, width_get() - 2, height_get() - 2, gui_color_get(background));
-        gfx_rect_frame(x, y, width_get(), height_get(), gui_color_get(GUI_COLOR_FORM_FRAME_FK));
+        auto w = width_get();
+        auto h = height_get() - 1;
+        // Заливка
+        gfx_rect_solid(x, y + 1, w, h - 1, gui_color_get(background));
+        // Граница
+        auto fk = gui_color_get(GUI_COLOR_FORM_FRAME_FK);
+        gfx_line_horz(x, y, w, fk);
+        gfx_line_horz(x, y + h, w, fk);
     }
     
     // Установка фокуса новому элементу
@@ -1231,6 +1310,72 @@ void gui_form_main_t::motor_test_enter(void)
     gui_form_stack.add(gui_form_motor_test);
 }
 
+// Форма выбора темы
+static class gui_form_theme_t : public gui_form_t
+{
+    // Рамка
+    gui_bevel_t bevel;
+    // Надпись заголовка
+    gui_label_t header;
+    // Кнопки тем
+    gui_button_notify_t light, dark;
+    
+    // Выбор темы
+    static void select(gui_theme_kind_t theme)
+    {
+        // Запись в настройки
+        flash_write(&GUI_SETTINGS.theme, &theme, sizeof(theme));
+        // Вход в главную форму
+        gui_form_stack.add(gui_form_main);
+        // Обновление панели действий
+        gui_action_panel.refresh();
+    }
+    
+    // Выбор светлой темы
+    static void select_light(void)
+    {
+        select(GUI_THEME_KIND_LIGHT);
+    }
+    
+    // Выбор темной темы
+    static void select_dark(void)
+    {
+        select(GUI_THEME_KIND_DARK);
+    }
+public:
+    // Конструктор по умолчанию
+    gui_form_theme_t(void) 
+        : gui_form_t("ВЫБОР ТЕМЫ"), 
+          header(FONT_HEADER_BOLD),
+          light("СВЕТЛАЯ", select_light),
+          dark("ТЕМНАЯ", select_dark)
+    {
+        // Заголовок
+        header.text_set("ВЫБОР ТЕМЫ");
+        header.bounds_set(0, 23, LCD_SIZE_WIDTH, 22);
+        add(header);
+        // Рамка
+        bevel.bounds_set(36, 68, 168, 156);
+        add(bevel);
+        // Кнопки
+        light.bounds_set(18, 16, 132, 54);
+        bevel.add(light);
+        dark.bounds_set(18, 86, 132, 54);
+        bevel.add(dark);
+        // Фокус
+        light.connect(dark);
+        switch (GUI_SETTINGS.theme)
+        {
+            case GUI_THEME_KIND_LIGHT:
+                focused_set(&light);
+                break;
+            case GUI_THEME_KIND_DARK:
+                focused_set(&dark);
+                break;
+        }
+    }
+} gui_form_theme;
+
 // Таймер перерисовки интерфейса
 static timer_notify_t gui_paint_timer([](void)
 {
@@ -1248,7 +1393,8 @@ static key_event_handler_t gui_key_event([](const key_event_args_t &key)
 
 void gui_init(void)
 {
-    // Добавляем главную форму
+    // Добавляем формы
+    gui_form_stack.add(gui_form_theme);
     gui_form_stack.add(gui_form_main);
     // 25 кадров в секунду
     gui_paint_timer.start_hz(25, TIMER_FLAG_LOOP);
