@@ -16,4 +16,6 @@ extern const uint8_t IMAGE_ROUND_LB[];
 
 extern const uint8_t IMAGE_STATUS_ICON[];
 
+extern const uint8_t IMAGE_MISC_MOTOR[];
+
 #endif // __IMAGE_H
